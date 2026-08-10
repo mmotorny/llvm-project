@@ -5480,6 +5480,10 @@ void VPlanTransforms::makeMemOpWideningDecisions(VPlan &Plan, VFRange &Range,
         if (VPHistogramRecipe *Histogram = RecipeBuilder.widenIfHistogram(VPI))
           return ReplaceWith(VPI, VPBuilder(VPI).insert(Histogram));
 
+        if (VPWidenMemIntrinsicRecipe *Compressed =
+                RecipeBuilder.widenIfCompressedMemoryOp(VPI))
+          return ReplaceWith(VPI, VPBuilder(VPI).insert(Compressed));
+
         return false;
       });
 
