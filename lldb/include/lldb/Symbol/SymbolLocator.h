@@ -15,9 +15,12 @@
 #include "lldb/Utility/Status.h"
 #include "lldb/Utility/UUID.h"
 
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/Error.h"
 
+#include <string>
 #include <system_error>
+#include <vector>
 
 namespace lldb_private {
 
@@ -48,6 +51,9 @@ public:
     /// Allow contacting an external symbol server when the local searches come
     /// up empty.
     bool external_lookup = false;
+
+    /// How to name this binary in a progress report.
+    std::string description;
   };
 
   /// What a search found.
@@ -80,12 +86,36 @@ public:
   static llvm::Expected<Result> Locate(const Request &request,
                                        const FileSpecList &search_paths);
 
+  /// Search for a batch of binaries.
+  ///
+  /// Each request's platform hook runs on the calling thread, in order, so that
+  /// a platform does not have to be thread safe to take part. The plugin
+  /// searches may run concurrently, which is where the time goes: a single one
+  /// of them can shell out to a symbol server or fetch over the network.
+  ///
+  /// Blocks until every search has finished.
+  ///
+  /// \return
+  ///     One result per request, in the order the requests were given, each as
+  ///     described for the single request above. Only the results are ordered.
+  ///     Anything a search reports to the user arrives in whatever order the
+  ///     searches finish in.
+  static std::vector<llvm::Expected<Result>>
+  Locate(llvm::ArrayRef<Request> requests, const FileSpecList &search_paths,
+         bool parallel);
+
   /// Locate the symbol file for the given UUID on a background thread. This
   /// function returns immediately. Under the hood it uses the debugger's
   /// thread pool to call DownloadObjectAndSymbolFile. If a symbol file is
   /// found, this will notify all target which contain the module with the
   /// given UUID.
   static void DownloadSymbolFileAsync(const UUID &uuid);
+
+private:
+  /// The symbol locator plugins, without the platform hook. This is the half
+  /// that is safe to run for several binaries at once.
+  static llvm::Expected<Result>
+  LocateWithPlugins(const Request &request, const FileSpecList &search_paths);
 };
 
 } // namespace lldb_private
