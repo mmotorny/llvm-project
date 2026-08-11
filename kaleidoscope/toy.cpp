@@ -8,123 +8,142 @@
 // token. Everything downstream (the parser, in step 2) works with this token
 // stream instead of characters.
 //
+// Design note: the official tutorial keeps the lexer state in globals and a
+// function-local static. We deviate: a Lexer instance owns all of its state
+// and reads from any std::istream, and a token is a std::variant where each
+// kind carries its own payload — so the payload for the wrong kind can't
+// even be named, and independent Lexer instances are safe to use from
+// different threads.
+//
 //===----------------------------------------------------------------------===//
 
 #include <cctype>
-#include <cstdio>
 #include <cstdlib>
+#include <istream>
+#include <iostream>
+#include <print>
 #include <string>
+#include <variant>
 
 //===----------------------------------------------------------------------===//
 // Lexer
 //===----------------------------------------------------------------------===//
 
-// The lexer returns tokens [0-255] (a character's own ASCII value) for
-// one-character tokens it doesn't know, like '+' or '(', and one of these
-// negative values for everything it does know. Distinguishing them is why the
-// token type is int rather than this enum.
-enum Token {
-  tok_eof = -1,
-
-  // commands
-  tok_def = -2,
-  tok_extern = -3,
-
-  // primary
-  tok_identifier = -4,
-  tok_number = -5,
+// One struct per token kind; a payload exists only on the kinds that have
+// one. Operators and punctuation the lexer doesn't otherwise recognize
+// ('+', '(', ',', ...) come through as Char.
+namespace tok {
+struct Eof {};
+struct Def {};
+struct Extern {};
+struct Identifier {
+  std::string Name;
 };
+struct Number {
+  double Value;
+};
+struct Char {
+  char Ch;
+};
+} // namespace tok
 
-// Some tokens carry a value with them: for tok_identifier the actual name,
-// for tok_number the numeric value. The lexer leaves them in these globals
-// each time it returns one of those tokens.
-static std::string IdentifierStr; // Filled in if tok_identifier
-static double NumVal;             // Filled in if tok_number
+using Token = std::variant<tok::Eof, tok::Def, tok::Extern, tok::Identifier,
+                           tok::Number, tok::Char>;
 
-/// gettok - Return the next token from standard input.
-static int gettok() {
-  // The last character read but not yet consumed. Starts as ' ' so the first
-  // call falls straight into the whitespace-skipping loop and reads for real.
-  static int LastChar = ' ';
+class Lexer {
+public:
+  explicit Lexer(std::istream &In) : In(In) {}
 
-  // Skip any whitespace.
-  while (isspace(LastChar))
-    LastChar = getchar();
+  /// Consume characters from the stream and return the next token.
+  Token Next() {
+    // Skip any whitespace.
+    while (std::isspace(LastChar))
+      LastChar = In.get();
 
-  if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
-    IdentifierStr = LastChar;
-    while (isalnum((LastChar = getchar())))
-      IdentifierStr += LastChar;
+    if (std::isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+      std::string Name(1, char(LastChar));
+      while (std::isalnum(LastChar = In.get()))
+        Name += char(LastChar);
 
-    // Keywords are just identifiers the lexer special-cases.
-    if (IdentifierStr == "def")
-      return tok_def;
-    if (IdentifierStr == "extern")
-      return tok_extern;
-    return tok_identifier;
+      // Keywords are just identifiers the lexer special-cases.
+      if (Name == "def")
+        return tok::Def{};
+      if (Name == "extern")
+        return tok::Extern{};
+      return tok::Identifier{std::move(Name)};
+    }
+
+    if (std::isdigit(LastChar) || LastChar == '.') { // number: [0-9.]+
+      std::string NumStr;
+      do {
+        NumStr += char(LastChar);
+        LastChar = In.get();
+      } while (std::isdigit(LastChar) || LastChar == '.');
+
+      // Sloppy on purpose (accepts "1.2.3"); the tutorial leaves fixing
+      // this as an exercise.
+      return tok::Number{std::strtod(NumStr.c_str(), nullptr)};
+    }
+
+    if (LastChar == '#') {
+      // Comment until end of line.
+      do
+        LastChar = In.get();
+      while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
+
+      if (LastChar != EOF)
+        return Next();
+    }
+
+    // Check for end of file. Don't eat the EOF.
+    if (LastChar == EOF)
+      return tok::Eof{};
+
+    // Otherwise, hand the character through as-is.
+    char ThisChar = char(LastChar);
+    LastChar = In.get();
+    return tok::Char{ThisChar};
   }
 
-  if (isdigit(LastChar) || LastChar == '.') { // Number: [0-9.]+
-    std::string NumStr;
-    do {
-      NumStr += LastChar;
-      LastChar = getchar();
-    } while (isdigit(LastChar) || LastChar == '.');
-
-    // Sloppy on purpose (accepts "1.2.3"); the tutorial leaves fixing this
-    // as an exercise.
-    NumVal = strtod(NumStr.c_str(), nullptr);
-    return tok_number;
-  }
-
-  if (LastChar == '#') {
-    // Comment until end of line.
-    do
-      LastChar = getchar();
-    while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-
-    if (LastChar != EOF)
-      return gettok();
-  }
-
-  // Check for end of file. Don't eat the EOF.
-  if (LastChar == EOF)
-    return tok_eof;
-
-  // Otherwise, just return the character as its ascii value.
-  int ThisChar = LastChar;
-  LastChar = getchar();
-  return ThisChar;
-}
+private:
+  std::istream &In;
+  // One character of lookahead: to know where a token like `fib` ends, the
+  // lexer must read one character past it; that character belongs to the
+  // *next* token, so it is held here between calls. Starts as ' ' so the
+  // first Next() falls straight into the whitespace loop and reads for real.
+  int LastChar = ' ';
+};
 
 //===----------------------------------------------------------------------===//
 // Driver
 //===----------------------------------------------------------------------===//
 
+// The standard trick for building a std::visit visitor out of lambdas: a
+// struct that inherits every lambda's operator().
+template <class... Ts> struct Overloaded : Ts... {
+  using Ts::operator()...;
+};
+
 // Temporary driver so this step is testable on its own: read stdin and print
 // each token on its own line. Replaced by the parser driver in step 2.
 int main() {
-  while (true) {
-    int Tok = gettok();
-    switch (Tok) {
-    case tok_eof:
-      printf("eof\n");
+  Lexer Lex(std::cin);
+  for (;;) {
+    Token Tok = Lex.Next();
+    if (std::holds_alternative<tok::Eof>(Tok)) {
+      std::println("eof");
       return 0;
-    case tok_def:
-      printf("def\n");
-      break;
-    case tok_extern:
-      printf("extern\n");
-      break;
-    case tok_identifier:
-      printf("identifier: %s\n", IdentifierStr.c_str());
-      break;
-    case tok_number:
-      printf("number: %g\n", NumVal);
-      break;
-    default:
-      printf("char: '%c'\n", (char)Tok);
-      break;
     }
+    std::visit(Overloaded{
+                   [](tok::Eof) {},
+                   [](tok::Def) { std::println("def"); },
+                   [](tok::Extern) { std::println("extern"); },
+                   [](const tok::Identifier &I) {
+                     std::println("identifier: {}", I.Name);
+                   },
+                   [](tok::Number N) { std::println("number: {}", N.Value); },
+                   [](tok::Char C) { std::println("char: '{}'", C.Ch); },
+               },
+               Tok);
   }
 }

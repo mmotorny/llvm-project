@@ -24,6 +24,12 @@ fib(40)
 All the code lives in a single file, `toy.cpp`, which grows with each step —
 so each PR's diff is exactly what the step adds.
 
+We follow the tutorial's *structure* but not its style: where the tutorial
+uses globals and function-local statics for simplicity, we keep state in
+classes (e.g. the lexer is a `Lexer` instance over a `std::istream`) and use
+C++23 idioms (`std::variant` tokens, `std::println`) where they make the code
+safer or clearer.
+
 ## Building and running
 
 Steps 1–2 (lexer, parser) need only a C++ compiler. We build as C++23 (LLVM
