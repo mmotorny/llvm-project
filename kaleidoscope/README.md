@@ -21,27 +21,52 @@ def fib(x)
 fib(40)
 ```
 
-All the code lives in a single file, `toy.cpp`, which grows with each step —
-so each PR's diff is exactly what the step adds.
+Each compiler stage lives in its own header with a matching unit-test file
+(`lexer.h` / `lexer_test.cpp`, ...), so each PR's diff is exactly what the
+step adds. The interactive driver, `toy.cpp`, arrives in step 2 once there is
+a parser to drive.
 
 We follow the tutorial's *structure* but not its style: where the tutorial
 uses globals and function-local statics for simplicity, we keep state in
 classes (e.g. the lexer is a `Lexer` instance over a `std::istream`) and use
-C++23 idioms (`std::variant` tokens, `std::println`) where they make the code
-safer or clearer.
+C++23 idioms (`std::variant` tokens, defaulted comparisons) where they make
+the code safer or clearer. LLVM itself builds as C++17, which is a floor,
+not a ceiling — our targets opt into C++23 in CMake.
 
-## Building and running
+## Building and testing
 
-Steps 1–2 (lexer, parser) need only a C++ compiler. We build as C++23 (LLVM
-itself requires only C++17, but permits newer standards):
+Kaleidoscope is wired into the LLVM build as an LLVM *external project*, the
+same way in-tree LLVM code is built and tested. One-time configure from the
+repo root (Release with assertions is the standard development
+configuration; X86 is the only backend we need):
 
 ```
-clang++ -std=c++23 toy.cpp -o toy
-echo 'def fib(x) fib(x-1)+fib(x-2)' | ./toy
+cmake -S llvm -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLVM_ENABLE_ASSERTIONS=ON \
+  -DLLVM_TARGETS_TO_BUILD=X86 \
+  -DLLVM_EXTERNAL_PROJECTS=kaleidoscope \
+  -DLLVM_EXTERNAL_KALEIDOSCOPE_SOURCE_DIR="$PWD/kaleidoscope" \
+  -DLLVM_TOOL_KALEIDOSCOPE_BUILD=ON \
+  -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 ```
 
-From step 3 on (LLVM IR generation) the build line will link against LLVM
-libraries; the instructions here will be updated then.
+(The last two kaleidoscope flags shouldn't be needed in theory — external
+projects default to `<repo-root>/<name>` — but that default is only applied
+when `LLVM_ENABLE_PROJECTS` is non-empty, so we set them explicitly.)
+
+Build and run the unit tests (the first build also compiles the LLVMSupport
+library and LLVM's vendored googletest, which LLVM unit tests link against):
+
+```
+ninja -C build KaleidoscopeTests
+build/tools/kaleidoscope/KaleidoscopeLexerTest
+```
+
+Testing follows LLVM's own two-tier convention: **googletest unit tests**
+for C++ APIs (what we have now), and — once the compiler emits IR in step
+3+ — **lit + FileCheck** regression tests that run the compiler on sample
+programs and check its output.
 
 ## Progress
 

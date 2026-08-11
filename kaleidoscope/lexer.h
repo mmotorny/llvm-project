@@ -1,6 +1,4 @@
-//===- toy.cpp - Kaleidoscope, built step by step -------------------------===//
-//
-// Step 1: the lexer.
+//===- lexer.h - Kaleidoscope step 1: the lexer ---------------------------===//
 //
 // A compiler never looks at raw characters directly. The first stage, the
 // lexer (also called a tokenizer or scanner), groups characters into
@@ -17,38 +15,72 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef KALEIDOSCOPE_LEXER_H
+#define KALEIDOSCOPE_LEXER_H
+
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <istream>
-#include <iostream>
-#include <print>
+#include <ostream>
 #include <string>
 #include <variant>
-
-//===----------------------------------------------------------------------===//
-// Lexer
-//===----------------------------------------------------------------------===//
 
 // One struct per token kind; a payload exists only on the kinds that have
 // one. Operators and punctuation the lexer doesn't otherwise recognize
 // ('+', '(', ',', ...) come through as Char.
 namespace tok {
-struct Eof {};
-struct Def {};
-struct Extern {};
+struct Eof {
+  bool operator==(const Eof &) const = default;
+};
+struct Def {
+  bool operator==(const Def &) const = default;
+};
+struct Extern {
+  bool operator==(const Extern &) const = default;
+};
 struct Identifier {
   std::string Name;
+  bool operator==(const Identifier &) const = default;
 };
 struct Number {
   double Value;
+  bool operator==(const Number &) const = default;
 };
 struct Char {
   char Ch;
+  bool operator==(const Char &) const = default;
 };
 } // namespace tok
 
 using Token = std::variant<tok::Eof, tok::Def, tok::Extern, tok::Identifier,
                            tok::Number, tok::Char>;
+
+// Printable for test-failure messages and debugging. Defined in namespace
+// tok so argument-dependent lookup finds it for Token (a std::variant over
+// tok:: types).
+namespace tok {
+inline std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
+  std::visit(
+      [&](const auto &T) {
+        using T2 = std::decay_t<decltype(T)>;
+        if constexpr (std::is_same_v<T2, Eof>)
+          OS << "eof";
+        else if constexpr (std::is_same_v<T2, Def>)
+          OS << "def";
+        else if constexpr (std::is_same_v<T2, Extern>)
+          OS << "extern";
+        else if constexpr (std::is_same_v<T2, Identifier>)
+          OS << "identifier " << T.Name;
+        else if constexpr (std::is_same_v<T2, Number>)
+          OS << "number " << T.Value;
+        else if constexpr (std::is_same_v<T2, Char>)
+          OS << "char '" << T.Ch << "'";
+      },
+      Tok);
+  return OS;
+}
+} // namespace tok
 
 class Lexer {
 public:
@@ -114,36 +146,4 @@ private:
   int LastChar = ' ';
 };
 
-//===----------------------------------------------------------------------===//
-// Driver
-//===----------------------------------------------------------------------===//
-
-// The standard trick for building a std::visit visitor out of lambdas: a
-// struct that inherits every lambda's operator().
-template <class... Ts> struct Overloaded : Ts... {
-  using Ts::operator()...;
-};
-
-// Temporary driver so this step is testable on its own: read stdin and print
-// each token on its own line. Replaced by the parser driver in step 2.
-int main() {
-  Lexer Lex(std::cin);
-  for (;;) {
-    Token Tok = Lex.Next();
-    if (std::holds_alternative<tok::Eof>(Tok)) {
-      std::println("eof");
-      return 0;
-    }
-    std::visit(Overloaded{
-                   [](tok::Eof) {},
-                   [](tok::Def) { std::println("def"); },
-                   [](tok::Extern) { std::println("extern"); },
-                   [](const tok::Identifier &I) {
-                     std::println("identifier: {}", I.Name);
-                   },
-                   [](tok::Number N) { std::println("number: {}", N.Value); },
-                   [](tok::Char C) { std::println("char: '{}'", C.Ch); },
-               },
-               Tok);
-  }
-}
+#endif // KALEIDOSCOPE_LEXER_H
