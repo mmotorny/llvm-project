@@ -26,10 +26,11 @@ so each PR's diff is exactly what the step adds.
 
 ## Building and running
 
-Steps 1–2 (lexer, parser) need only a C++ compiler:
+Steps 1–2 (lexer, parser) need only a C++ compiler. We build as C++23 (LLVM
+itself requires only C++17, but permits newer standards):
 
 ```
-clang++ -std=c++17 toy.cpp -o toy
+clang++ -std=c++23 toy.cpp -o toy
 echo 'def fib(x) fib(x-1)+fib(x-2)' | ./toy
 ```
 
