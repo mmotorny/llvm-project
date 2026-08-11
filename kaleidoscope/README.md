@@ -28,10 +28,11 @@ a parser to drive.
 
 We follow the tutorial's *structure* but not its style: where the tutorial
 uses globals and function-local statics for simplicity, we keep state in
-classes (e.g. the lexer is a `Lexer` instance over a `std::istream`) and use
-C++23 idioms (`std::variant` tokens, defaulted comparisons) where they make
-the code safer or clearer. LLVM itself builds as C++17, which is a floor,
-not a ceiling — our targets opt into C++23 in CMake.
+classes (e.g. the lexer is a `Lexer` instance over a `std::istream`) with
+type-safe representations (`std::variant` tokens). We build as C++17, the
+same standard as the LLVM tree we're part of, and prefer LLVM's own
+vocabulary types (`llvm::Expected`, `llvm::StringRef`, ...) over newer
+standard-library equivalents — learning them is part of learning LLVM.
 
 ## Building and testing
 

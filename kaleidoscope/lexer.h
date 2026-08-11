@@ -30,27 +30,32 @@
 // one. Operators and punctuation the lexer doesn't otherwise recognize
 // ('+', '(', ',', ...) come through as Char.
 namespace tok {
-struct Eof {
-  bool operator==(const Eof &) const = default;
-};
-struct Def {
-  bool operator==(const Def &) const = default;
-};
-struct Extern {
-  bool operator==(const Extern &) const = default;
-};
+struct Eof {};
+struct Def {};
+struct Extern {};
 struct Identifier {
   std::string Name;
-  bool operator==(const Identifier &) const = default;
 };
 struct Number {
   double Value;
-  bool operator==(const Number &) const = default;
 };
 struct Char {
   char Ch;
-  bool operator==(const Char &) const = default;
 };
+
+// Equality, needed by the tests (and by std::variant's operator==). Written
+// by hand: defaulted comparisons arrive only in C++20, and we build as
+// C++17 to match LLVM.
+inline bool operator==(const Eof &, const Eof &) { return true; }
+inline bool operator==(const Def &, const Def &) { return true; }
+inline bool operator==(const Extern &, const Extern &) { return true; }
+inline bool operator==(const Identifier &L, const Identifier &R) {
+  return L.Name == R.Name;
+}
+inline bool operator==(const Number &L, const Number &R) {
+  return L.Value == R.Value;
+}
+inline bool operator==(const Char &L, const Char &R) { return L.Ch == R.Ch; }
 } // namespace tok
 
 using Token = std::variant<tok::Eof, tok::Def, tok::Extern, tok::Identifier,
