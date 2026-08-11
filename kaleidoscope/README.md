@@ -21,10 +21,19 @@ def fib(x)
 fib(40)
 ```
 
-Each compiler stage lives in its own header with a matching unit-test file
-(`lexer.h` / `lexer_test.cpp`, ...), so each PR's diff is exactly what the
-step adds. The interactive driver, `toy.cpp`, arrives in step 2 once there is
-a parser to drive.
+The directory layout mirrors LLVM's own (its build system enforces one
+target per directory, so a flat layout isn't even possible):
+
+- `include/kaleidoscope/` — public headers, one per compiler stage
+  (`Lexer.h`, ...)
+- `lib/` — the implementation, compiled into the `KaleidoscopeCore` static
+  library
+- `unittests/` — googletest unit tests, one file per stage (`LexerTest.cpp`,
+  ...)
+
+Each step adds its stage across those three directories, so each PR's diff
+is exactly what the step adds. The interactive driver, `toy.cpp`, arrives in
+step 2 once there is a parser to drive.
 
 We follow the tutorial's *structure* but not its style: where the tutorial
 uses globals and function-local statics for simplicity, we keep state in
@@ -61,7 +70,7 @@ library and LLVM's vendored googletest, which LLVM unit tests link against):
 
 ```
 ninja -C build KaleidoscopeTests
-build/tools/kaleidoscope/KaleidoscopeLexerTest
+build/tools/kaleidoscope/unittests/KaleidoscopeLexerTest
 ```
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**

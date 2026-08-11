@@ -1,6 +1,6 @@
-//===- lexer_test.cpp - Unit tests for the Kaleidoscope lexer -------------===//
+//===- LexerTest.cpp - Unit tests for the Kaleidoscope lexer -- -------------===//
 
-#include "lexer.h"
+#include "kaleidoscope/Lexer.h"
 
 #include "gtest/gtest.h"
 
