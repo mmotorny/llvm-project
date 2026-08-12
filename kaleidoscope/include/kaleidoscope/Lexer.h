@@ -72,12 +72,10 @@ public:
   Token Next();
 
 private:
+  // The stream doubles as the lexer's one character of lookahead: peek()
+  // lets Next() see where a token ends without consuming the character
+  // that starts the next one.
   std::istream &In;
-  // One character of lookahead: to know where a token like `fib` ends, the
-  // lexer must read one character past it; that character belongs to the
-  // *next* token, so it is held here between calls. Starts as ' ' so the
-  // first Next() falls straight into the whitespace loop and reads for real.
-  int LastChar = ' ';
 };
 
 #endif // KALEIDOSCOPE_LEXER_H

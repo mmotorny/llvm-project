@@ -1,4 +1,4 @@
-//===- Lexer.cpp - Kaleidoscope lexer implementation -- ----------------------===//
+//===- Lexer.cpp - Kaleidoscope lexer implementation ----------------------===//
 
 #include "kaleidoscope/Lexer.h"
 
@@ -33,13 +33,15 @@ std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
 
 Token Lexer::Next() {
   // Skip any whitespace.
-  while (std::isspace(LastChar))
-    LastChar = In.get();
+  while (std::isspace(In.peek()))
+    In.get();
 
-  if (std::isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
-    std::string Name(1, char(LastChar));
-    while (std::isalnum(LastChar = In.get()))
-      Name += char(LastChar);
+  int C = In.peek();
+
+  if (std::isalpha(C)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+    std::string Name;
+    while (std::isalnum(In.peek()))
+      Name += char(In.get());
 
     // Keywords are just identifiers the lexer special-cases.
     if (Name == "def")
@@ -49,34 +51,26 @@ Token Lexer::Next() {
     return tok::Identifier{std::move(Name)};
   }
 
-  if (std::isdigit(LastChar) || LastChar == '.') { // number: [0-9.]+
+  if (std::isdigit(C) || C == '.') { // number: [0-9.]+
     std::string NumStr;
-    do {
-      NumStr += char(LastChar);
-      LastChar = In.get();
-    } while (std::isdigit(LastChar) || LastChar == '.');
+    while (std::isdigit(In.peek()) || In.peek() == '.')
+      NumStr += char(In.get());
 
     // Sloppy on purpose (accepts "1.2.3"); the tutorial leaves fixing
     // this as an exercise.
     return tok::Number{std::strtod(NumStr.c_str(), nullptr)};
   }
 
-  if (LastChar == '#') {
-    // Comment until end of line.
-    do
-      LastChar = In.get();
-    while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-
-    if (LastChar != EOF)
-      return Next();
+  if (C == '#') {
+    // Comment until end of line, then start over on the next line.
+    while (In.peek() != EOF && In.peek() != '\n' && In.peek() != '\r')
+      In.get();
+    return Next();
   }
 
-  // Check for end of file. Don't eat the EOF.
-  if (LastChar == EOF)
+  if (C == EOF)
     return tok::Eof{};
 
   // Otherwise, hand the character through as-is.
-  char ThisChar = char(LastChar);
-  LastChar = In.get();
-  return tok::Char{ThisChar};
+  return tok::Char{char(In.get())};
 }

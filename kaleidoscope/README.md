@@ -57,13 +57,12 @@ cmake -S llvm -B build -G Ninja \
   -DLLVM_TARGETS_TO_BUILD=X86 \
   -DLLVM_EXTERNAL_PROJECTS=kaleidoscope \
   -DLLVM_EXTERNAL_KALEIDOSCOPE_SOURCE_DIR="$PWD/kaleidoscope" \
-  -DLLVM_TOOL_KALEIDOSCOPE_BUILD=ON \
   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 ```
 
-(The last two kaleidoscope flags shouldn't be needed in theory — external
-projects default to `<repo-root>/<name>` — but that default is only applied
-when `LLVM_ENABLE_PROJECTS` is non-empty, so we set them explicitly.)
+(`LLVM_EXTERNAL_PROJECTS` registers the project; the `SOURCE_DIR` flag says
+where it lives, needed because external projects are otherwise expected at
+`llvm/tools/<name>` and ours sits at the repository root.)
 
 Build and run the unit tests (the first build also compiles the LLVMSupport
 library and LLVM's vendored googletest, which LLVM unit tests link against):
