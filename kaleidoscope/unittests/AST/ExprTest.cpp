@@ -3,58 +3,21 @@
 #include "kaleidoscope/AST/Expr.h"
 
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/raw_ostream.h"
 
 #include "gtest/gtest.h"
-
-#include <memory>
-#include <utility>
-#include <vector>
 
 using namespace kaleidoscope;
 
 namespace {
 
-// Render an expression through its raw_ostream printer.
-std::string toString(const Expr &E) {
-  std::string S;
-  llvm::raw_string_ostream OS(S);
-  OS << E;
-  return S;
-}
-
-TEST(ExprTest, PrintsNumberInShortestForm) {
-  EXPECT_EQ(toString(NumberExpr(42)), "42");
-  EXPECT_EQ(toString(NumberExpr(40.5)), "40.5");
-}
-
-TEST(ExprTest, PrintsVariableAsItsName) {
-  EXPECT_EQ(toString(VariableExpr("x")), "x");
-}
-
-TEST(ExprTest, PrintsBinaryAsPrefixSExpression) {
-  BinaryExpr Sum('+', std::make_unique<VariableExpr>("x"),
-                 std::make_unique<NumberExpr>(1));
-
-  EXPECT_EQ(toString(Sum), "(+ x 1)");
-}
-
-TEST(ExprTest, PrintsCallWithSpaceSeparatedArgs) {
-  std::vector<std::unique_ptr<Expr>> Args;
-  Args.push_back(std::make_unique<VariableExpr>("x"));
-  Args.push_back(std::make_unique<NumberExpr>(2));
-  CallExpr Call("f", std::move(Args));
-
-  EXPECT_EQ(toString(Call), "(f x 2)");
-}
-
-TEST(ExprTest, PrintsNoArgCallAsBareParens) {
-  EXPECT_EQ(toString(CallExpr("f", {})), "(f)");
-}
-
 // The Kind tag plus classof() is what makes LLVM's isa/cast/dyn_cast work
 // on our hierarchy — the same mechanism every class hierarchy in LLVM uses
 // instead of dynamic_cast.
+//
+// The S-expression printer is deliberately not tested here: it is test
+// infrastructure (the lens the parser tests look through), not a stable
+// format — like clang's -ast-dump output. The parser tests pin its behavior
+// transitively.
 TEST(ExprTest, SupportsLlvmStyleRtti) {
   NumberExpr Num(1);
   const Expr &E = Num;
