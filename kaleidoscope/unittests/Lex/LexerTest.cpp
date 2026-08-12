@@ -208,11 +208,4 @@ TEST(LexerTest, IndependentInstances) {
   EXPECT_TRUE(LexB.Next().is(tok::eof));
 }
 
-TEST(LexerTest, FixedSpellingsMatchTheirKinds) {
-  EXPECT_STREQ(tok::getSpelling(tok::kw_def), "def");
-  EXPECT_STREQ(tok::getSpelling(tok::l_paren), "(");
-  EXPECT_EQ(tok::getSpelling(tok::identifier), nullptr);
-  EXPECT_EQ(tok::getSpelling(tok::eof), nullptr);
-}
-
 } // namespace

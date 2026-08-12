@@ -38,11 +38,6 @@ enum TokenKind : unsigned short {
   less,    // <
 };
 
-/// The fixed spelling of Kind — "(" for l_paren, "def" for kw_def — or
-/// nullptr for the kinds whose spelling varies per token (identifier,
-/// number) or that have none (eof, unknown).
-const char *getSpelling(TokenKind Kind);
-
 } // namespace kaleidoscope::tok
 
 #endif // KALEIDOSCOPE_LEX_TOKENKINDS_H
