@@ -4,4 +4,6 @@
 add_custom_target(KaleidoscopeTests)
 set_target_properties(KaleidoscopeTests PROPERTIES FOLDER "Kaleidoscope/Tests")
 
+add_subdirectory(AST)
 add_subdirectory(Lex)
+add_subdirectory(Parse)
