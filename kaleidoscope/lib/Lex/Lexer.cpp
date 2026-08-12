@@ -2,16 +2,14 @@
 
 #include "kaleidoscope/Lex/Lexer.h"
 
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 
-#include <cctype>
-
 using namespace kaleidoscope;
-
-static bool isSpace(char C) { return std::isspace((unsigned char)C); }
-static bool isAlpha(char C) { return std::isalpha((unsigned char)C); }
-static bool isAlnum(char C) { return std::isalnum((unsigned char)C); }
-static bool isDigit(char C) { return std::isdigit((unsigned char)C); }
+using llvm::isAlnum;
+using llvm::isAlpha;
+using llvm::isDigit;
+using llvm::isSpace;
 
 // Keywords are identifiers with reserved spellings. Clang drives this from
 // its TokenKinds.def and a hash table of interned identifiers; a
