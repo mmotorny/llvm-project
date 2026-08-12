@@ -22,6 +22,11 @@
 #include <string>
 #include <variant>
 
+// Everything lives in the project namespace, clang-style: one namespace for
+// the whole project regardless of directory (clang::), with rare semantic
+// nested namespaces — tok below parallels clang::tok.
+namespace kaleidoscope {
+
 // One struct per token kind; a payload exists only on the kinds that have
 // one. Operators and punctuation the lexer doesn't otherwise recognize
 // ('+', '(', ',', ...) come through as Char.
@@ -83,5 +88,7 @@ private:
   // that starts the next one.
   std::istream &In;
 };
+
+} // namespace kaleidoscope
 
 #endif // KALEIDOSCOPE_LEX_LEXER_H

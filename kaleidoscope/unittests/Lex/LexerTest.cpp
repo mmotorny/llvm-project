@@ -6,6 +6,8 @@
 
 #include <sstream>
 
+using namespace kaleidoscope;
+
 namespace {
 
 TEST(LexerTest, EmptyInput) {

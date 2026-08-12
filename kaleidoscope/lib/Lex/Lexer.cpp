@@ -8,7 +8,9 @@
 #include <istream>
 #include <ostream>
 
-namespace tok {
+using namespace kaleidoscope;
+
+namespace kaleidoscope::tok {
 std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
   std::visit(
       [&](const auto &T) {
@@ -29,7 +31,7 @@ std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
       Tok);
   return OS;
 }
-} // namespace tok
+} // namespace kaleidoscope::tok
 
 Token Lexer::Next() {
   // Comments are whitespace as far as the parser is concerned, so skip both
