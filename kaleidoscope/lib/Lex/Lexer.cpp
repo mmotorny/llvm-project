@@ -2,82 +2,86 @@
 
 #include "kaleidoscope/Lex/Lexer.h"
 
+#include "llvm/ADT/StringSwitch.h"
+
 #include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include <istream>
-#include <ostream>
 
 using namespace kaleidoscope;
 
-namespace kaleidoscope::tok {
-std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
-  std::visit(
-      [&](const auto &T) {
-        using T2 = std::decay_t<decltype(T)>;
-        if constexpr (std::is_same_v<T2, Eof>)
-          OS << "eof";
-        else if constexpr (std::is_same_v<T2, Def>)
-          OS << "def";
-        else if constexpr (std::is_same_v<T2, Extern>)
-          OS << "extern";
-        else if constexpr (std::is_same_v<T2, Identifier>)
-          OS << "identifier " << T.Name;
-        else if constexpr (std::is_same_v<T2, Number>)
-          OS << "number " << T.Value;
-        else if constexpr (std::is_same_v<T2, Char>)
-          OS << "char '" << T.Ch << "'";
-      },
-      Tok);
-  return OS;
+static bool isSpace(char C) { return std::isspace((unsigned char)C); }
+static bool isAlpha(char C) { return std::isalpha((unsigned char)C); }
+static bool isAlnum(char C) { return std::isalnum((unsigned char)C); }
+static bool isDigit(char C) { return std::isdigit((unsigned char)C); }
+
+// Keywords are identifiers with reserved spellings. Clang drives this from
+// its TokenKinds.def and a hash table of interned identifiers; a
+// StringSwitch is the right size for two keywords.
+static tok::TokenKind classifyIdentifier(llvm::StringRef Spelling) {
+  return llvm::StringSwitch<tok::TokenKind>(Spelling)
+      .Case("def", tok::kw_def)
+      .Case("extern", tok::kw_extern)
+      .Default(tok::identifier);
 }
-} // namespace kaleidoscope::tok
 
 Token Lexer::Next() {
-  // Comments are whitespace as far as the parser is concerned, so skip both
-  // together: any run of blanks, and everything from '#' to end of line.
-  while (true) {
-    if (std::isspace(In.peek()))
-      In.get();
-    else if (In.peek() == '#')
-      do
-        In.get();
-      while (In.peek() != EOF && In.peek() != '\n' && In.peek() != '\r');
+  // Skip whitespace and comments ('#' to end of line) together: both are
+  // equally invisible to the parser.
+  while (Cur != End) {
+    if (isSpace(*Cur))
+      ++Cur;
+    else if (*Cur == '#')
+      while (Cur != End && *Cur != '\n' && *Cur != '\r')
+        ++Cur;
     else
       break;
   }
 
-  if (std::isalpha(In.peek())) { // identifier: [a-zA-Z][a-zA-Z0-9]*
-    std::string Name;
-    while (std::isalnum(In.peek()))
-      Name += char(In.get());
+  const char *TokStart = Cur;
 
-    // Keywords are just identifiers the lexer special-cases.
-    if (Name == "def")
-      return tok::Def{};
-    if (Name == "extern")
-      return tok::Extern{};
-    return tok::Identifier{std::move(Name)};
+  if (Cur == End)
+    return formToken(tok::eof, TokStart);
+
+  char C = *Cur;
+
+  if (isAlpha(C)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+    do
+      ++Cur;
+    while (Cur != End && isAlnum(*Cur));
+    llvm::StringRef Spelling(TokStart, Cur - TokStart);
+    return Token(classifyIdentifier(Spelling), Spelling);
   }
 
-  if (std::isdigit(In.peek()) ||
-      In.peek() == '.') { // number: [0-9]* ('.' [0-9]*)?
-    std::string NumStr;
-    while (std::isdigit(In.peek()))
-      NumStr += char(In.get());
-    if (In.peek() == '.') {
-      NumStr += char(In.get());
-      while (std::isdigit(In.peek()))
-        NumStr += char(In.get());
+  if (isDigit(C) || C == '.') { // number: [0-9]* ('.' [0-9]*)?
+    while (Cur != End && isDigit(*Cur))
+      ++Cur;
+    if (Cur != End && *Cur == '.') {
+      ++Cur;
+      while (Cur != End && isDigit(*Cur))
+        ++Cur;
     }
-    if (NumStr == ".") // a lone dot is not a number after all
-      return tok::Char{'.'};
-    return tok::Number{std::strtod(NumStr.c_str(), nullptr)};
+    // A lone '.' contains no digits and is not a number after all.
+    if (Cur - TokStart == 1 && C == '.')
+      return formToken(tok::unknown, TokStart);
+    return formToken(tok::number, TokStart);
   }
 
-  if (In.peek() == EOF)
-    return tok::Eof{};
-
-  // Otherwise, hand the character through as-is.
-  return tok::Char{char(In.get())};
+  ++Cur;
+  switch (C) {
+  case '(':
+    return formToken(tok::l_paren, TokStart);
+  case ')':
+    return formToken(tok::r_paren, TokStart);
+  case ',':
+    return formToken(tok::comma, TokStart);
+  case '+':
+    return formToken(tok::plus, TokStart);
+  case '-':
+    return formToken(tok::minus, TokStart);
+  case '*':
+    return formToken(tok::star, TokStart);
+  case '<':
+    return formToken(tok::less, TokStart);
+  default:
+    return formToken(tok::unknown, TokStart);
+  }
 }

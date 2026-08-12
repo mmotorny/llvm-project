@@ -37,11 +37,14 @@ step 2 once there is a parser to drive.
 
 We follow the tutorial's *structure* but not its style: where the tutorial
 uses globals and function-local statics for simplicity, we keep state in
-classes (e.g. the lexer is a `Lexer` instance over a `std::istream`) with
-type-safe representations (`std::variant` tokens). We build as C++17, the
-same standard as the LLVM tree we're part of, and prefer LLVM's own
-vocabulary types (`llvm::Expected`, `llvm::StringRef`, ...) over newer
-standard-library equivalents — learning them is part of learning LLVM.
+classes and model data the way the production compilers in this repo do —
+tokens, for example, follow clang's design (a flat `Token` of kind +
+spelling borrowed from the source buffer; every keyword and punctuator its
+own `tok::` kind) rather than the tutorial's int-or-global scheme. We build
+as C++17, the same standard as the LLVM tree we're part of, and prefer
+LLVM's own vocabulary types (`llvm::Expected`, `llvm::StringRef`, ...) over
+newer standard-library equivalents — learning them is part of learning
+LLVM.
 
 ## Building and testing
 
