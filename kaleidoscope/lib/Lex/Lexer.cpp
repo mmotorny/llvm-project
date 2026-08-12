@@ -1,6 +1,6 @@
 //===- Lexer.cpp - Kaleidoscope lexer implementation ----------------------===//
 
-#include "kaleidoscope/Lexer.h"
+#include "kaleidoscope/Lex/Lexer.h"
 
 #include <cctype>
 #include <cstdio>
@@ -32,13 +32,20 @@ std::ostream &operator<<(std::ostream &OS, const Token &Tok) {
 } // namespace tok
 
 Token Lexer::Next() {
-  // Skip any whitespace.
-  while (std::isspace(In.peek()))
-    In.get();
+  // Comments are whitespace as far as the parser is concerned, so skip both
+  // together: any run of blanks, and everything from '#' to end of line.
+  while (true) {
+    if (std::isspace(In.peek()))
+      In.get();
+    else if (In.peek() == '#')
+      do
+        In.get();
+      while (In.peek() != EOF && In.peek() != '\n' && In.peek() != '\r');
+    else
+      break;
+  }
 
-  int C = In.peek();
-
-  if (std::isalpha(C)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
+  if (std::isalpha(In.peek())) { // identifier: [a-zA-Z][a-zA-Z0-9]*
     std::string Name;
     while (std::isalnum(In.peek()))
       Name += char(In.get());
@@ -51,24 +58,22 @@ Token Lexer::Next() {
     return tok::Identifier{std::move(Name)};
   }
 
-  if (std::isdigit(C) || C == '.') { // number: [0-9.]+
+  if (std::isdigit(In.peek()) ||
+      In.peek() == '.') { // number: [0-9]* ('.' [0-9]*)?
     std::string NumStr;
-    while (std::isdigit(In.peek()) || In.peek() == '.')
+    while (std::isdigit(In.peek()))
       NumStr += char(In.get());
-
-    // Sloppy on purpose (accepts "1.2.3"); the tutorial leaves fixing
-    // this as an exercise.
+    if (In.peek() == '.') {
+      NumStr += char(In.get());
+      while (std::isdigit(In.peek()))
+        NumStr += char(In.get());
+    }
+    if (NumStr == ".") // a lone dot is not a number after all
+      return tok::Char{'.'};
     return tok::Number{std::strtod(NumStr.c_str(), nullptr)};
   }
 
-  if (C == '#') {
-    // Comment until end of line, then start over on the next line.
-    while (In.peek() != EOF && In.peek() != '\n' && In.peek() != '\r')
-      In.get();
-    return Next();
-  }
-
-  if (C == EOF)
+  if (In.peek() == EOF)
     return tok::Eof{};
 
   // Otherwise, hand the character through as-is.

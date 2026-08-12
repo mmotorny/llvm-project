@@ -21,15 +21,15 @@ def fib(x)
 fib(40)
 ```
 
-The directory layout mirrors LLVM's own (its build system enforces one
-target per directory, so a flat layout isn't even possible):
+The directory layout and library naming mirror clang's (LLVM's build system
+enforces one target per directory, so a flat layout isn't even possible):
+each compiler phase is a static library `kaleidoscope<Phase>` — like
+`clangLex`, `clangParse`, `clangAST` in clang — with matching header and
+test directories:
 
-- `include/kaleidoscope/` — public headers, one per compiler stage
-  (`Lexer.h`, ...)
-- `lib/` — the implementation, compiled into the `KaleidoscopeCore` static
-  library
-- `unittests/` — googletest unit tests, one file per stage (`LexerTest.cpp`,
-  ...)
+- `include/kaleidoscope/<Phase>/` — public headers (`Lex/Lexer.h`, ...)
+- `lib/<Phase>/` — the implementation (`Lex/` builds `kaleidoscopeLex`, ...)
+- `unittests/<Phase>/` — googletest unit tests (`Lex/LexerTest.cpp`, ...)
 
 Each step adds its stage across those three directories, so each PR's diff
 is exactly what the step adds. The interactive driver, `toy.cpp`, arrives in
@@ -69,7 +69,7 @@ library and LLVM's vendored googletest, which LLVM unit tests link against):
 
 ```
 ninja -C build KaleidoscopeTests
-build/tools/kaleidoscope/unittests/KaleidoscopeLexerTest
+build/tools/kaleidoscope/unittests/Lex/KaleidoscopeLexTests
 ```
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**

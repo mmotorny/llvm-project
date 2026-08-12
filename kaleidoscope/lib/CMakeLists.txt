@@ -1,5 +1,3 @@
-# The compiler itself: a static library that the unit tests and (from step 2)
-# the interactive driver link against. BUILDTREE_ONLY: never installed.
-add_llvm_library(KaleidoscopeCore BUILDTREE_ONLY
-  Lexer.cpp
-)
+# One library per compiler phase, following clang's convention (clangLex,
+# clangParse, clangAST, ...): lib/<Phase>/ builds kaleidoscope<Phase>.
+add_subdirectory(Lex)

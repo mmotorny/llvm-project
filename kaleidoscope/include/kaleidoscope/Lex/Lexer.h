@@ -15,8 +15,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef KALEIDOSCOPE_LEXER_H
-#define KALEIDOSCOPE_LEXER_H
+#ifndef KALEIDOSCOPE_LEX_LEXER_H
+#define KALEIDOSCOPE_LEX_LEXER_H
 
 #include <iosfwd>
 #include <string>
@@ -69,6 +69,12 @@ public:
   explicit Lexer(std::istream &In) : In(In) {}
 
   /// Consume characters from the stream and return the next token.
+  ///
+  /// At end of input returns tok::Eof, and keeps returning it on further
+  /// calls. Like the underlying stream's eof state, running out of input is
+  /// a stable condition rather than a one-shot event, so callers (the
+  /// parser's lookahead in particular) may always ask for the next token
+  /// without tracking whether they already saw the end.
   Token Next();
 
 private:
@@ -78,4 +84,4 @@ private:
   std::istream &In;
 };
 
-#endif // KALEIDOSCOPE_LEXER_H
+#endif // KALEIDOSCOPE_LEX_LEXER_H

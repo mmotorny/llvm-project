@@ -1,6 +1,6 @@
 //===- LexerTest.cpp - Unit tests for the Kaleidoscope lexer --------------===//
 
-#include "kaleidoscope/Lexer.h"
+#include "kaleidoscope/Lex/Lexer.h"
 
 #include "gtest/gtest.h"
 
@@ -22,6 +22,9 @@ TEST(LexerTest, WhitespaceOnly) {
   EXPECT_EQ(Lex.Next(), Token(tok::Eof{}));
 }
 
+// Sticky Eof is the documented contract (see Lexer::Next): running out of
+// input is a stable condition, so lookahead code may always ask for another
+// token without tracking whether the end was already seen.
 TEST(LexerTest, EofIsSticky) {
   std::istringstream In("x");
   Lexer Lex(In);
@@ -70,15 +73,26 @@ TEST(LexerTest, NumberCarriesItsValue) {
   EXPECT_EQ(Lex.Next(), Token(tok::Eof{}));
 }
 
-// Known quirk, kept from the tutorial on purpose: the lexer greedily eats
-// digits and dots, and strtod stops at the second dot, so "1.2.3" becomes
-// the single number 1.2. This test documents the behavior; fixing it is a
-// tutorial exercise.
-TEST(LexerTest, MultipleDotsQuirk) {
+// A number contains at most one dot (the tutorial's lexer would eat
+// "1.2.3" as one malformed number). The second dot ends the token, and —
+// starting a fresh token with '.' followed by a digit — begins a new
+// fractional number. Rejecting the two adjacent numbers is the parser's
+// job, not the lexer's.
+TEST(LexerTest, SecondDotStartsANewNumber) {
   std::istringstream In("1.2.3");
   Lexer Lex(In);
 
   EXPECT_EQ(Lex.Next(), Token(tok::Number{1.2}));
+  EXPECT_EQ(Lex.Next(), Token(tok::Number{0.3}));
+  EXPECT_EQ(Lex.Next(), Token(tok::Eof{}));
+}
+
+// A dot with no digits around it is not a number.
+TEST(LexerTest, LoneDotIsAChar) {
+  std::istringstream In(".");
+  Lexer Lex(In);
+
+  EXPECT_EQ(Lex.Next(), Token(tok::Char{'.'}));
   EXPECT_EQ(Lex.Next(), Token(tok::Eof{}));
 }
 
