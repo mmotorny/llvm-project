@@ -52,9 +52,9 @@ private:
 
   void advance() { Cur = Lex.Next(); }
 
-  /// If the current token is the character C, consume it and return true;
+  /// If the current token is of kind K, consume it and return true;
   /// otherwise leave it in place and return false.
-  bool consumeIf(char C);
+  bool consumeIf(tok::TokenKind K);
 
   Lexer &Lex;
   // One token of lookahead: the parser picks the grammar rule to apply by

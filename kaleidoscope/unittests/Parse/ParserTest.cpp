@@ -9,8 +9,6 @@
 
 #include "gtest/gtest.h"
 
-#include <sstream>
-
 using namespace kaleidoscope;
 
 namespace {
@@ -26,8 +24,7 @@ std::string toString(const Expr &E) {
 }
 
 TEST(ParserTest, ParsesNumber) {
-  std::istringstream In("42");
-  Lexer Lex(In);
+  Lexer Lex("42");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -36,8 +33,7 @@ TEST(ParserTest, ParsesNumber) {
 }
 
 TEST(ParserTest, ParsesVariable) {
-  std::istringstream In("x");
-  Lexer Lex(In);
+  Lexer Lex("x");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -46,8 +42,7 @@ TEST(ParserTest, ParsesVariable) {
 }
 
 TEST(ParserTest, MultiplicationBindsTighterThanAddition) {
-  std::istringstream In("x + y * 2");
-  Lexer Lex(In);
+  Lexer Lex("x + y * 2");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -56,8 +51,7 @@ TEST(ParserTest, MultiplicationBindsTighterThanAddition) {
 }
 
 TEST(ParserTest, EqualPrecedenceGroupsLeftToRight) {
-  std::istringstream In("a - b + c");
-  Lexer Lex(In);
+  Lexer Lex("a - b + c");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -66,8 +60,7 @@ TEST(ParserTest, EqualPrecedenceGroupsLeftToRight) {
 }
 
 TEST(ParserTest, ComparisonBindsLoosest) {
-  std::istringstream In("a + b < c * d");
-  Lexer Lex(In);
+  Lexer Lex("a + b < c * d");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -76,8 +69,7 @@ TEST(ParserTest, ComparisonBindsLoosest) {
 }
 
 TEST(ParserTest, ParenthesesOverridePrecedence) {
-  std::istringstream In("(x + y) * 2");
-  Lexer Lex(In);
+  Lexer Lex("(x + y) * 2");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -86,8 +78,7 @@ TEST(ParserTest, ParenthesesOverridePrecedence) {
 }
 
 TEST(ParserTest, ParsesCallWithExpressionArguments) {
-  std::istringstream In("fib(x - 1)");
-  Lexer Lex(In);
+  Lexer Lex("fib(x - 1)");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -96,8 +87,7 @@ TEST(ParserTest, ParsesCallWithExpressionArguments) {
 }
 
 TEST(ParserTest, ParsesCallWithNoArguments) {
-  std::istringstream In("f()");
-  Lexer Lex(In);
+  Lexer Lex("f()");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -106,8 +96,7 @@ TEST(ParserTest, ParsesCallWithNoArguments) {
 }
 
 TEST(ParserTest, ParsesCallWithMultipleArguments) {
-  std::istringstream In("f(a, b + 1, g(c))");
-  Lexer Lex(In);
+  Lexer Lex("f(a, b + 1, g(c))");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -116,8 +105,7 @@ TEST(ParserTest, ParsesCallWithMultipleArguments) {
 }
 
 TEST(ParserTest, MissingRightOperandIsAnError) {
-  std::istringstream In("x +");
-  Lexer Lex(In);
+  Lexer Lex("x +");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -126,8 +114,7 @@ TEST(ParserTest, MissingRightOperandIsAnError) {
 }
 
 TEST(ParserTest, UnclosedParenthesisIsAnError) {
-  std::istringstream In("(x + y");
-  Lexer Lex(In);
+  Lexer Lex("(x + y");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -136,8 +123,7 @@ TEST(ParserTest, UnclosedParenthesisIsAnError) {
 }
 
 TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
-  std::istringstream In("f(a b)");
-  Lexer Lex(In);
+  Lexer Lex("f(a b)");
   Parser P(Lex);
 
   auto E = P.parseExpr();
@@ -147,8 +133,7 @@ TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
 }
 
 TEST(ParserTest, EmptyInputIsAnError) {
-  std::istringstream In("");
-  Lexer Lex(In);
+  Lexer Lex("");
   Parser P(Lex);
 
   auto E = P.parseExpr();

@@ -4,41 +4,31 @@
 
 #include "llvm/Support/Error.h"
 
-#include <variant>
-
 using namespace kaleidoscope;
-
-namespace {
 
 // Binary operator precedence: higher binds tighter, so '*' groups before
 // '+', and '<' groups last. Anything that is not a binary operator gets -1,
 // which loses every precedence comparison.
-int getPrecedence(const Token &Tok) {
-  const auto *C = std::get_if<tok::Char>(&Tok);
-  if (!C)
-    return -1;
-  switch (C->Ch) {
-  case '<':
+static int getPrecedence(const Token &Tok) {
+  switch (Tok.getKind()) {
+  case tok::less:
     return 10;
-  case '+':
-  case '-':
+  case tok::plus:
+  case tok::minus:
     return 20;
-  case '*':
+  case tok::star:
     return 40;
   default:
     return -1;
   }
 }
 
-llvm::Error makeParseError(const llvm::Twine &Msg) {
+static llvm::Error makeParseError(const llvm::Twine &Msg) {
   return llvm::createStringError(llvm::inconvertibleErrorCode(), Msg);
 }
 
-} // namespace
-
-bool Parser::consumeIf(char C) {
-  const auto *Ch = std::get_if<tok::Char>(&Cur);
-  if (!Ch || Ch->Ch != C)
+bool Parser::consumeIf(tok::TokenKind K) {
+  if (Cur.isNot(K))
     return false;
   advance();
   return true;
@@ -52,43 +42,43 @@ llvm::Expected<std::unique_ptr<Expr>> Parser::parseExpr() {
 }
 
 llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
-  if (const auto *Num = std::get_if<tok::Number>(&Cur)) {
-    double Value = Num->Value;
+  if (Cur.is(tok::number)) {
+    double Value = Cur.getNumber();
     advance();
     return std::make_unique<NumberExpr>(Value);
   }
 
-  if (const auto *Id = std::get_if<tok::Identifier>(&Cur)) {
-    std::string Name = Id->Name;
+  if (Cur.is(tok::identifier)) {
+    std::string Name = Cur.getIdentifier().str();
     advance();
 
     // A bare identifier is a variable reference; one followed by '(' is a
     // call.
-    if (!consumeIf('('))
+    if (!consumeIf(tok::l_paren))
       return std::make_unique<VariableExpr>(std::move(Name));
 
     std::vector<std::unique_ptr<Expr>> Args;
-    if (!consumeIf(')')) {
+    if (!consumeIf(tok::r_paren)) {
       while (true) {
         auto Arg = parseExpr();
         if (!Arg)
           return Arg.takeError();
         Args.push_back(std::move(*Arg));
 
-        if (consumeIf(')'))
+        if (consumeIf(tok::r_paren))
           break;
-        if (!consumeIf(','))
+        if (!consumeIf(tok::comma))
           return makeParseError("expected ')' or ',' in argument list");
       }
     }
     return std::make_unique<CallExpr>(std::move(Name), std::move(Args));
   }
 
-  if (consumeIf('(')) {
+  if (consumeIf(tok::l_paren)) {
     auto E = parseExpr();
     if (!E)
       return E;
-    if (!consumeIf(')'))
+    if (!consumeIf(tok::r_paren))
       return makeParseError("expected ')'");
     // No ParenExpr node: the grouping's whole effect is already encoded in
     // the shape of the subtree.
@@ -107,7 +97,10 @@ Parser::parseBinOpRHS(int MinPrec, std::unique_ptr<Expr> LHS) {
     if (Prec < MinPrec)
       return std::move(LHS);
 
-    char Op = std::get<tok::Char>(Cur).Ch;
+    // The AST stores the operator as its source character; the punctuator's
+    // one-char spelling is exactly that. (Clang similarly translates token
+    // kinds into its own operator enum at this boundary.)
+    char Op = Cur.getSpelling().front();
     advance();
 
     auto RHS = parsePrimary();
