@@ -1,4 +1,4 @@
-# RUN: not toy %s 2>&1 | FileCheck %s
+# RUN: not kaleidoscope %s 2>&1 | FileCheck %s
 
 (x + y
-# CHECK: toy: error: expected ')'
+# CHECK: kaleidoscope: error: expected ')'

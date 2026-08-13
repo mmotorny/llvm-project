@@ -30,7 +30,8 @@ test directories:
 - `include/kaleidoscope/<Phase>/` — public headers (`Lex/Lexer.h`, ...)
 - `lib/<Phase>/` — the implementation (`Lex/` builds `kaleidoscopeLex`, ...)
 - `unittests/<Phase>/` — googletest unit tests (`Lex/LexerTest.cpp`, ...)
-- `tools/toy/` — the driver executable, named `toy` after the tutorial's
+- `tools/driver/` — the driver executable, `kaleidoscope` (clang's layout:
+  `clang/tools/driver` builds the `clang` binary)
 - `test/` — lit + FileCheck regression tests (`.ks` sample programs)
 
 Each step adds its stage across those directories, so each PR's diff is
@@ -85,9 +86,10 @@ LLVM IR from step 4 on:
 ninja -C build check-kaleidoscope
 ```
 
-The driver itself is `build/bin/toy`: run it with a file (or `-` for a
-pipe) to compile a whole buffer, or with no arguments for an interactive
-prompt.
+The driver itself is `build/bin/kaleidoscope`: run it with a file (or `-`
+for a pipe) to compile a whole buffer, or with no arguments for an
+interactive prompt. (The tutorial calls its binary `toy`; ours takes the
+project's name, as clang and flang do.)
 
 ## Progress
 

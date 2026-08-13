@@ -7,7 +7,7 @@
 # target per directory):
 #   include/kaleidoscope/  public headers
 #   lib/                   the compiler phases, one library each
-#   tools/                 executables — the toy driver
+#   tools/                 executables — the kaleidoscope driver
 #   unittests/             googletest unit tests
 #   test/                  lit + FileCheck regression tests
 

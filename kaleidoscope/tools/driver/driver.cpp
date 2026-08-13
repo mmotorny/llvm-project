@@ -1,4 +1,4 @@
-//===- toy.cpp - Kaleidoscope compiler driver -----------------------------===//
+//===- driver.cpp - Kaleidoscope compiler driver --------------------------===//
 //
 // The driver is the program a user actually runs; the phase libraries do
 // the work. For now "the work" is parsing: each top-level entity is parsed
@@ -52,7 +52,7 @@ static llvm::cl::opt<std::string>
 // Print the parsed entity, or report the parse error; false on error.
 template <typename T> static bool printOrReport(llvm::Expected<T *> Parsed) {
   if (!Parsed) {
-    llvm::WithColor::error(llvm::errs(), "toy")
+    llvm::WithColor::error(llvm::errs(), "kaleidoscope")
         << llvm::toString(Parsed.takeError()) << '\n';
     return false;
   }
@@ -94,14 +94,14 @@ int main(int argc, char **argv) {
   if (!InputFilename.empty()) {
     auto Buffer = llvm::MemoryBuffer::getFileOrSTDIN(InputFilename);
     if (std::error_code EC = Buffer.getError()) {
-      llvm::WithColor::error(llvm::errs(), "toy")
+      llvm::WithColor::error(llvm::errs(), "kaleidoscope")
           << InputFilename << ": " << EC.message() << '\n';
       return 1;
     }
     return handleBuffer((*Buffer)->getBuffer()) ? 0 : 1;
   }
 
-  llvm::LineEditor LE("toy");
+  llvm::LineEditor LE("kaleidoscope");
   LE.setPrompt("ready> ");
   while (std::optional<std::string> Line = LE.readLine())
     handleBuffer(*Line);

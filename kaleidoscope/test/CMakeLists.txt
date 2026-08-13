@@ -13,6 +13,6 @@ configure_lit_site_cfg(
 add_lit_testsuite(check-kaleidoscope
   "Running the Kaleidoscope regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS FileCheck count not toy
+  DEPENDS FileCheck count not kaleidoscope
 )
 set_target_properties(check-kaleidoscope PROPERTIES FOLDER "Kaleidoscope/Tests")
