@@ -1,4 +1,4 @@
-# RUN: not toy %s 2>&1 | FileCheck %s
+# RUN: not kaleidoscope %s 2>&1 | FileCheck %s
 
 def f(x)
-# CHECK: toy: error: expected an expression
+# CHECK: kaleidoscope: error: expected an expression

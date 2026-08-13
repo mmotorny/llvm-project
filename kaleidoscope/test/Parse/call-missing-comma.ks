@@ -1,4 +1,4 @@
-# RUN: not toy %s 2>&1 | FileCheck %s
+# RUN: not kaleidoscope %s 2>&1 | FileCheck %s
 
 f(a b)
-# CHECK: toy: error: expected ')' or ',' in argument list
+# CHECK: kaleidoscope: error: expected ')' or ',' in argument list

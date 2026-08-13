@@ -21,6 +21,8 @@ config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = config.kaleidoscope_obj_root
 
 # Substitutions for the standard helper tools (FileCheck, not, ...) plus
-# our own: bare "toy" in a RUN line resolves to the just-built binary.
+# our own: bare "kaleidoscope" in a RUN line resolves to the just-built
+# binary. (Substitution skips matches preceded by '/', so the word inside
+# the test files' *paths* is never rewritten.)
 llvm_config.use_default_substitutions()
-llvm_config.add_tool_substitutions(["toy"], [config.llvm_tools_dir])
+llvm_config.add_tool_substitutions(["kaleidoscope"], [config.llvm_tools_dir])
