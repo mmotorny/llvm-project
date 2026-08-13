@@ -39,6 +39,28 @@ public:
   llvm::Expected<std::unique_ptr<Expr>> parseExpr();
 
 private:
+  /// Binary-operator precedence, as a dedicated type so a precedence can't
+  /// be confused with (or silently converted from) an unrelated integer.
+  /// The underlying values are spaced out because step 8 of the tutorial
+  /// lets users declare new operators with numeric precedences in between.
+  /// (Clang's fixed grammar affords it a dense named enum instead:
+  /// clang/Basic/OperatorPrecedence.h's prec::Level.)
+  enum class Prec : int {
+    Invalid = -1, // Not a binary operator: loses every comparison.
+    Lowest = 0,   // parseExpr's starting bound: accepts any operator.
+    Comparison = 10,     // <
+    Additive = 20,       // +, -
+    Multiplicative = 40, // *
+  };
+
+  static Prec getPrecedence(const Token &Tok);
+
+  /// One step tighter than P: the recursion bound that encodes
+  /// left-associativity in parseBinOpRHS.
+  static Prec oneTighter(Prec P) {
+    return Prec(static_cast<int>(P) + 1);
+  }
+
   /// primary ::= number
   ///           | identifier
   ///           | identifier '(' (expression (',' expression)*)? ')'
@@ -47,7 +69,7 @@ private:
 
   /// Parse "(binop primary)*" continuations of LHS, as long as the next
   /// operator binds at least as tightly as MinPrec.
-  llvm::Expected<std::unique_ptr<Expr>> parseBinOpRHS(int MinPrec,
+  llvm::Expected<std::unique_ptr<Expr>> parseBinOpRHS(Prec MinPrec,
                                                       std::unique_ptr<Expr> LHS);
 
   void advance() { Cur = Lex.Next(); }

@@ -6,20 +6,21 @@
 
 using namespace kaleidoscope;
 
-// Binary operator precedence: higher binds tighter, so '*' groups before
-// '+', and '<' groups last. Anything that is not a binary operator gets -1,
-// which loses every precedence comparison.
-static int getPrecedence(const Token &Tok) {
+// Higher precedence binds tighter, so '*' groups before '+', and '<' groups
+// last. Anything that is not a binary operator gets Invalid, which loses
+// every precedence comparison — that one convention is what lets
+// parseBinOpRHS's exit test be a single comparison.
+Parser::Prec Parser::getPrecedence(const Token &Tok) {
   switch (Tok.getKind()) {
   case tok::less:
-    return 10;
+    return Prec::Comparison;
   case tok::plus:
   case tok::minus:
-    return 20;
+    return Prec::Additive;
   case tok::star:
-    return 40;
+    return Prec::Multiplicative;
   default:
-    return -1;
+    return Prec::Invalid;
   }
 }
 
@@ -37,8 +38,8 @@ bool Parser::consumeIf(tok::TokenKind K) {
 llvm::Expected<std::unique_ptr<Expr>> Parser::parseExpr() {
   auto LHS = parsePrimary();
   if (!LHS)
-    return LHS;
-  return parseBinOpRHS(0, std::move(*LHS));
+    return LHS.takeError();
+  return parseBinOpRHS(Prec::Lowest, std::move(*LHS));
 }
 
 llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
@@ -77,7 +78,7 @@ llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
   if (consumeIf(tok::l_paren)) {
     auto E = parseExpr();
     if (!E)
-      return E;
+      return E.takeError();
     if (!consumeIf(tok::r_paren))
       return makeParseError("expected ')'");
     // No ParenExpr node: the grouping's whole effect is already encoded in
@@ -89,12 +90,12 @@ llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
 }
 
 llvm::Expected<std::unique_ptr<Expr>>
-Parser::parseBinOpRHS(int MinPrec, std::unique_ptr<Expr> LHS) {
+Parser::parseBinOpRHS(Prec MinPrec, std::unique_ptr<Expr> LHS) {
   while (true) {
     // Not an operator, or one that binds looser than we're allowed to
     // consume: our caller deals with it.
-    int Prec = getPrecedence(Cur);
-    if (Prec < MinPrec)
+    Prec P = getPrecedence(Cur);
+    if (P < MinPrec)
       return std::move(LHS);
 
     // The AST stores the operator as its source character; the punctuator's
@@ -105,15 +106,17 @@ Parser::parseBinOpRHS(int MinPrec, std::unique_ptr<Expr> LHS) {
 
     auto RHS = parsePrimary();
     if (!RHS)
-      return RHS;
+      return RHS.takeError();
 
     // If the next operator binds tighter than this one — "x + y * 2" with
     // Op '+' and '*' pending — the right operand isn't just the primary, it
-    // is everything that '*' claims. Recurse to let it claim it.
-    if (Prec < getPrecedence(Cur)) {
-      RHS = parseBinOpRHS(Prec + 1, std::move(*RHS));
+    // is everything that '*' claims. Recurse to let it claim it, bounding
+    // it at oneTighter(P): that strictness is what makes equal-precedence
+    // chains group left ("a - b + c" is "(a - b) + c").
+    if (P < getPrecedence(Cur)) {
+      RHS = parseBinOpRHS(oneTighter(P), std::move(*RHS));
       if (!RHS)
-        return RHS;
+        return RHS.takeError();
     }
 
     LHS = std::make_unique<BinaryExpr>(Op, std::move(LHS), std::move(*RHS));
