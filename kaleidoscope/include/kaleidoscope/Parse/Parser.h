@@ -40,27 +40,15 @@ public:
   llvm::Expected<Expr *> parseExpr();
 
 private:
-  /// Binary-operator precedence, as a dedicated type so a precedence can't
-  /// be confused with (or silently converted from) an unrelated integer.
-  /// The underlying values are spaced out because step 8 of the tutorial
-  /// lets users declare new operators with numeric precedences in between.
-  /// (Clang's fixed grammar affords it a dense named enum instead:
-  /// clang/Basic/OperatorPrecedence.h's prec::Level.)
-  enum class Prec : int {
-    Invalid = -1, // Not a binary operator: loses every comparison.
-    Lowest = 0,   // parseExpr's starting bound: accepts any operator.
-    Comparison = 10,     // <
-    Additive = 20,       // +, -
-    Multiplicative = 40, // *
-  };
+  /// Binary-operator precedence — an implementation detail of
+  /// parseBinOpRHS, so the enumerators, their values, and the rationale
+  /// live in Parser.cpp. Declared opaquely here only because the recursion
+  /// bound below needs a type — a dedicated one, so a precedence can't be
+  /// confused with an unrelated integer.
+  enum class Prec : int;
 
   static Prec getPrecedence(const Token &Tok);
-
-  /// One step tighter than P: the recursion bound that encodes
-  /// left-associativity in parseBinOpRHS.
-  static Prec oneTighter(Prec P) {
-    return Prec(static_cast<int>(P) + 1);
-  }
+  static Prec oneTighter(Prec P);
 
   /// primary ::= number
   ///           | identifier

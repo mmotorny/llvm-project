@@ -8,10 +8,29 @@
 
 using namespace kaleidoscope;
 
-// Higher precedence binds tighter, so '*' groups before '+', and '<' groups
-// last. Anything that is not a binary operator gets Invalid, which loses
-// every precedence comparison — that one convention is what lets
-// parseBinOpRHS's exit test be a single comparison.
+// Binary-operator precedence: higher binds tighter, so '*' groups before
+// '+', and '<' groups last. A dedicated type rather than a naked int; the
+// underlying values are spaced out because step 8 of the tutorial lets
+// users declare new operators with numeric precedences in between. (Clang's
+// fixed grammar affords it a dense named enum instead:
+// clang/Basic/OperatorPrecedence.h's prec::Level.)
+enum class Parser::Prec : int {
+  Invalid = -1, // Not a binary operator: loses every comparison.
+  Lowest = 0,   // parseExpr's starting bound: accepts any operator.
+  Comparison = 10,     // <
+  Additive = 20,       // +, -
+  Multiplicative = 40, // *
+};
+
+// One step tighter than P: the recursion bound that encodes
+// left-associativity in parseBinOpRHS.
+Parser::Prec Parser::oneTighter(Prec P) {
+  return Prec(static_cast<int>(P) + 1);
+}
+
+// Anything that is not a binary operator gets Invalid, which loses every
+// precedence comparison — that one convention is what lets parseBinOpRHS's
+// exit test be a single comparison.
 Parser::Prec Parser::getPrecedence(const Token &Tok) {
   switch (Tok.getKind()) {
   case tok::less:
