@@ -1,4 +1,4 @@
-# RUN: kaleidoscope %s | FileCheck %s
+# RUN: kaleidoscope -ast-dump %s | FileCheck %s
 
 # The driver parses each top-level entity in order and prints its AST on
 # one line, so CHECK-NEXT lines interleaved with the source pin the output
