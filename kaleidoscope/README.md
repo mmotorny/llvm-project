@@ -72,7 +72,7 @@ library and LLVM's vendored googletest, which LLVM unit tests link against):
 
 ```
 ninja -C build KaleidoscopeTests
-build/tools/kaleidoscope/unittests/Lex/KaleidoscopeLexTests
+build/tools/kaleidoscope/unittests/{Lex,AST,Parse}/Kaleidoscope*Tests
 ```
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**
@@ -84,7 +84,8 @@ programs and check its output.
 
 - [x] Step 1: Lexer — turn the raw character stream into tokens
 - [x] Step 2: AST and expression parser
-- [ ] Step 3: Parser for functions and the interactive driver loop
+- [ ] Step 3: Parser for functions, the interactive driver loop, and
+      lit + FileCheck end-to-end tests
 - [ ] Step 4: Code generation to LLVM IR
 - [ ] Step 5: Optimization passes and JIT compilation
 - [ ] Step 6: Control flow — if/then/else
