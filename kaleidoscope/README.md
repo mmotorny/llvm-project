@@ -83,7 +83,7 @@ programs and check its output.
 ## Progress
 
 - [x] Step 1: Lexer — turn the raw character stream into tokens
-- [ ] Step 2: AST and expression parser
+- [x] Step 2: AST and expression parser
 - [ ] Step 3: Parser for functions and the interactive driver loop
 - [ ] Step 4: Code generation to LLVM IR
 - [ ] Step 5: Optimization passes and JIT compilation
