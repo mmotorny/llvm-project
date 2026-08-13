@@ -2,6 +2,8 @@
 
 #include "kaleidoscope/Parse/Parser.h"
 
+#include "kaleidoscope/AST/ASTContext.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Error.h"
 
 using namespace kaleidoscope;
@@ -35,36 +37,38 @@ bool Parser::consumeIf(tok::TokenKind K) {
   return true;
 }
 
-llvm::Expected<std::unique_ptr<Expr>> Parser::parseExpr() {
+llvm::Expected<Expr *> Parser::parseExpr() {
   auto LHS = parsePrimary();
   if (!LHS)
     return LHS.takeError();
-  return parseBinOpRHS(Prec::Lowest, std::move(*LHS));
+  return parseBinOpRHS(Prec::Lowest, *LHS);
 }
 
-llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
+llvm::Expected<Expr *> Parser::parsePrimary() {
   if (Cur.is(tok::number)) {
     double Value = Cur.getNumber();
     advance();
-    return std::make_unique<NumberExpr>(Value);
+    return new (Ctx) NumberExpr(Value);
   }
 
   if (Cur.is(tok::identifier)) {
-    std::string Name = Cur.getIdentifier().str();
+    // The spelling stays valid after advance(): it points into the source
+    // buffer, not into the token.
+    llvm::StringRef Name = Cur.getIdentifier();
     advance();
 
     // A bare identifier is a variable reference; one followed by '(' is a
     // call.
     if (!consumeIf(tok::l_paren))
-      return std::make_unique<VariableExpr>(std::move(Name));
+      return new (Ctx) VariableExpr(Name);
 
-    std::vector<std::unique_ptr<Expr>> Args;
+    llvm::SmallVector<Expr *, 8> Args;
     if (!consumeIf(tok::r_paren)) {
       while (true) {
         auto Arg = parseExpr();
         if (!Arg)
           return Arg.takeError();
-        Args.push_back(std::move(*Arg));
+        Args.push_back(*Arg);
 
         if (consumeIf(tok::r_paren))
           break;
@@ -72,7 +76,7 @@ llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
           return makeParseError("expected ')' or ',' in argument list");
       }
     }
-    return std::make_unique<CallExpr>(std::move(Name), std::move(Args));
+    return new (Ctx) CallExpr(Name, Ctx.copyArray(llvm::ArrayRef(Args)));
   }
 
   if (consumeIf(tok::l_paren)) {
@@ -89,14 +93,13 @@ llvm::Expected<std::unique_ptr<Expr>> Parser::parsePrimary() {
   return makeParseError("expected an expression");
 }
 
-llvm::Expected<std::unique_ptr<Expr>>
-Parser::parseBinOpRHS(Prec MinPrec, std::unique_ptr<Expr> LHS) {
+llvm::Expected<Expr *> Parser::parseBinOpRHS(Prec MinPrec, Expr *LHS) {
   while (true) {
     // Not an operator, or one that binds looser than we're allowed to
     // consume: our caller deals with it.
     Prec P = getPrecedence(Cur);
     if (P < MinPrec)
-      return std::move(LHS);
+      return LHS;
 
     // The AST stores the operator as its source character; the punctuator's
     // one-char spelling is exactly that. (Clang similarly translates token
@@ -114,11 +117,11 @@ Parser::parseBinOpRHS(Prec MinPrec, std::unique_ptr<Expr> LHS) {
     // it at oneTighter(P): that strictness is what makes equal-precedence
     // chains group left ("a - b + c" is "(a - b) + c").
     if (P < getPrecedence(Cur)) {
-      RHS = parseBinOpRHS(oneTighter(P), std::move(*RHS));
+      RHS = parseBinOpRHS(oneTighter(P), *RHS);
       if (!RHS)
         return RHS.takeError();
     }
 
-    LHS = std::make_unique<BinaryExpr>(Op, std::move(LHS), std::move(*RHS));
+    LHS = new (Ctx) BinaryExpr(Op, LHS, *RHS);
   }
 }

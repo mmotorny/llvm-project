@@ -30,7 +30,7 @@ void Expr::print(llvm::raw_ostream &OS) const {
   case Kind::Call: {
     const auto &C = llvm::cast<CallExpr>(*this);
     OS << '(' << C.getCallee();
-    for (const std::unique_ptr<Expr> &Arg : C.getArgs())
+    for (const Expr *Arg : C.getArgs())
       OS << ' ' << *Arg;
     OS << ')';
     return;

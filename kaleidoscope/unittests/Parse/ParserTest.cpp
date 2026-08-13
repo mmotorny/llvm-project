@@ -2,6 +2,7 @@
 
 #include "kaleidoscope/Parse/Parser.h"
 
+#include "kaleidoscope/AST/ASTContext.h"
 #include "kaleidoscope/AST/Expr.h"
 #include "kaleidoscope/Lex/Lexer.h"
 #include "llvm/Support/Error.h"
@@ -25,7 +26,8 @@ std::string toString(const Expr &E) {
 
 TEST(ParserTest, ParsesNumber) {
   Lexer Lex("42");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -34,7 +36,8 @@ TEST(ParserTest, ParsesNumber) {
 
 TEST(ParserTest, ParsesVariable) {
   Lexer Lex("x");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -43,7 +46,8 @@ TEST(ParserTest, ParsesVariable) {
 
 TEST(ParserTest, MultiplicationBindsTighterThanAddition) {
   Lexer Lex("x + y * 2");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -52,7 +56,8 @@ TEST(ParserTest, MultiplicationBindsTighterThanAddition) {
 
 TEST(ParserTest, EqualPrecedenceGroupsLeftToRight) {
   Lexer Lex("a - b + c");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -61,7 +66,8 @@ TEST(ParserTest, EqualPrecedenceGroupsLeftToRight) {
 
 TEST(ParserTest, ComparisonBindsLoosest) {
   Lexer Lex("a + b < c * d");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -70,7 +76,8 @@ TEST(ParserTest, ComparisonBindsLoosest) {
 
 TEST(ParserTest, ParenthesesOverridePrecedence) {
   Lexer Lex("(x + y) * 2");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -79,7 +86,8 @@ TEST(ParserTest, ParenthesesOverridePrecedence) {
 
 TEST(ParserTest, ParsesCallWithExpressionArguments) {
   Lexer Lex("fib(x - 1)");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -88,7 +96,8 @@ TEST(ParserTest, ParsesCallWithExpressionArguments) {
 
 TEST(ParserTest, ParsesCallWithNoArguments) {
   Lexer Lex("f()");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -97,7 +106,8 @@ TEST(ParserTest, ParsesCallWithNoArguments) {
 
 TEST(ParserTest, ParsesCallWithMultipleArguments) {
   Lexer Lex("f(a, b + 1, g(c))");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
@@ -106,7 +116,8 @@ TEST(ParserTest, ParsesCallWithMultipleArguments) {
 
 TEST(ParserTest, MissingRightOperandIsAnError) {
   Lexer Lex("x +");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -115,7 +126,8 @@ TEST(ParserTest, MissingRightOperandIsAnError) {
 
 TEST(ParserTest, UnclosedParenthesisIsAnError) {
   Lexer Lex("(x + y");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -124,7 +136,8 @@ TEST(ParserTest, UnclosedParenthesisIsAnError) {
 
 TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
   Lexer Lex("f(a b)");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -134,7 +147,8 @@ TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
 
 TEST(ParserTest, EmptyInputIsAnError) {
   Lexer Lex("");
-  Parser P(Lex);
+  ASTContext Ctx;
+  Parser P(Lex, Ctx);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));

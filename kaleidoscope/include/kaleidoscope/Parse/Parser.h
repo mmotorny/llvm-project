@@ -26,17 +26,18 @@
 
 #include "llvm/Support/Error.h"
 
-#include <memory>
-
 namespace kaleidoscope {
+
+class ASTContext;
 
 class Parser {
 public:
+  /// Parsed nodes are allocated in (and owned by) Ctx.
   /// Note: reads the first token from Lex immediately (see Cur below).
-  explicit Parser(Lexer &Lex) : Lex(Lex), Cur(Lex.Next()) {}
+  Parser(Lexer &Lex, ASTContext &Ctx) : Lex(Lex), Ctx(Ctx), Cur(Lex.Next()) {}
 
   /// expression ::= primary (binop primary)*
-  llvm::Expected<std::unique_ptr<Expr>> parseExpr();
+  llvm::Expected<Expr *> parseExpr();
 
 private:
   /// Binary-operator precedence, as a dedicated type so a precedence can't
@@ -65,12 +66,11 @@ private:
   ///           | identifier
   ///           | identifier '(' (expression (',' expression)*)? ')'
   ///           | '(' expression ')'
-  llvm::Expected<std::unique_ptr<Expr>> parsePrimary();
+  llvm::Expected<Expr *> parsePrimary();
 
   /// Parse "(binop primary)*" continuations of LHS, as long as the next
   /// operator binds at least as tightly as MinPrec.
-  llvm::Expected<std::unique_ptr<Expr>> parseBinOpRHS(Prec MinPrec,
-                                                      std::unique_ptr<Expr> LHS);
+  llvm::Expected<Expr *> parseBinOpRHS(Prec MinPrec, Expr *LHS);
 
   void advance() { Cur = Lex.Next(); }
 
@@ -79,6 +79,7 @@ private:
   bool consumeIf(tok::TokenKind K);
 
   Lexer &Lex;
+  ASTContext &Ctx;
   // One token of lookahead: the parser picks the grammar rule to apply by
   // inspecting the current token without consuming it.
   Token Cur;

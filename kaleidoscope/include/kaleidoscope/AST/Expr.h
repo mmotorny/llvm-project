@@ -13,18 +13,29 @@
 // call boundaries are all encoded in its shape, so nothing downstream ever
 // re-derives them from the source text.
 //
-// Kaleidoscope expressions come in exactly four kinds: numeric literals,
-// variable references, binary operator applications, and function calls.
+// The hierarchy is modeled the way clang models its AST:
+//
+//  - No virtual functions anywhere — not even a destructor. Nodes live in
+//    an ASTContext arena and are never deleted individually, so no vtable
+//    is needed. Type identification is LLVM-style RTTI (a Kind tag plus
+//    classof), which makes llvm::isa<>/cast<>/dyn_cast<> work — see
+//    https://llvm.org/docs/HowToSetUpLLVMStyleRTTI.html
+//  - Operations over the tree (printing here; code generation later) are
+//    one switch over the Kind tag, not virtual methods: a closed hierarchy
+//    with open operations, so adding an operation touches no node class,
+//    and a default-less switch is compiler-checked for exhaustiveness.
+//  - Nodes own no memory: names are StringRefs borrowing the source buffer
+//    (the same lifetime contract as token spellings), child links are plain
+//    pointers to arena-owned nodes, and argument lists are ArrayRefs into
+//    the arena.
 //
 //===----------------------------------------------------------------------===//
 
 #ifndef KALEIDOSCOPE_AST_EXPR_H
 #define KALEIDOSCOPE_AST_EXPR_H
 
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
+#include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/StringRef.h"
 
 namespace llvm {
 class raw_ostream;
@@ -33,17 +44,9 @@ class raw_ostream;
 namespace kaleidoscope {
 
 /// Base class for all expression nodes.
-///
-/// Type identification uses LLVM-style RTTI — a Kind tag plus a classof()
-/// on each subclass — rather than C++'s dynamic_cast. This is how the whole
-/// LLVM tree does it, and it makes llvm::isa<>, llvm::cast<> and
-/// llvm::dyn_cast<> work on Expr (see
-/// https://llvm.org/docs/HowToSetUpLLVMStyleRTTI.html).
 class Expr {
 public:
   enum class Kind { Number, Variable, Binary, Call };
-
-  virtual ~Expr() = default;
 
   Kind getKind() const { return K; }
 
@@ -58,6 +61,9 @@ public:
 
 protected:
   explicit Expr(Kind K) : K(K) {}
+  // Non-virtual, and protected so nothing can `delete` a node through the
+  // base class: nodes are arena-owned by the ASTContext.
+  ~Expr() = default;
 
 private:
   const Kind K;
@@ -76,25 +82,26 @@ private:
   double Value;
 };
 
-/// A reference to a variable, like "x".
+/// A reference to a variable, like "x". The name borrows the source buffer,
+/// like the token spelling it came from.
 class VariableExpr : public Expr {
 public:
-  explicit VariableExpr(std::string Name)
-      : Expr(Kind::Variable), Name(std::move(Name)) {}
+  explicit VariableExpr(llvm::StringRef Name)
+      : Expr(Kind::Variable), Name(Name) {}
 
-  const std::string &getName() const { return Name; }
+  llvm::StringRef getName() const { return Name; }
 
   static bool classof(const Expr *E) { return E->getKind() == Kind::Variable; }
 
 private:
-  std::string Name;
+  llvm::StringRef Name;
 };
 
 /// A binary operator application, like "x + y".
 class BinaryExpr : public Expr {
 public:
-  BinaryExpr(char Op, std::unique_ptr<Expr> LHS, std::unique_ptr<Expr> RHS)
-      : Expr(Kind::Binary), Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+  BinaryExpr(char Op, Expr *LHS, Expr *RHS)
+      : Expr(Kind::Binary), Op(Op), LHS(LHS), RHS(RHS) {}
 
   char getOp() const { return Op; }
   const Expr &getLHS() const { return *LHS; }
@@ -104,23 +111,24 @@ public:
 
 private:
   char Op;
-  std::unique_ptr<Expr> LHS, RHS;
+  Expr *LHS;
+  Expr *RHS;
 };
 
 /// A function call, like "fib(40)".
 class CallExpr : public Expr {
 public:
-  CallExpr(std::string Callee, std::vector<std::unique_ptr<Expr>> Args)
-      : Expr(Kind::Call), Callee(std::move(Callee)), Args(std::move(Args)) {}
+  CallExpr(llvm::StringRef Callee, llvm::ArrayRef<Expr *> Args)
+      : Expr(Kind::Call), Callee(Callee), Args(Args) {}
 
-  const std::string &getCallee() const { return Callee; }
-  const std::vector<std::unique_ptr<Expr>> &getArgs() const { return Args; }
+  llvm::StringRef getCallee() const { return Callee; }
+  llvm::ArrayRef<Expr *> getArgs() const { return Args; }
 
   static bool classof(const Expr *E) { return E->getKind() == Kind::Call; }
 
 private:
-  std::string Callee;
-  std::vector<std::unique_ptr<Expr>> Args;
+  llvm::StringRef Callee;
+  llvm::ArrayRef<Expr *> Args;
 };
 
 /// Sugar over Expr::print, LLVM-style (cf. operator<< for llvm::Value), so
