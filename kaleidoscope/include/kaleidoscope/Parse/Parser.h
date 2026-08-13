@@ -21,6 +21,7 @@
 #ifndef KALEIDOSCOPE_PARSE_PARSER_H
 #define KALEIDOSCOPE_PARSE_PARSER_H
 
+#include "kaleidoscope/AST/Decl.h"
 #include "kaleidoscope/AST/Expr.h"
 #include "kaleidoscope/Lex/Lexer.h"
 
@@ -37,10 +38,35 @@ public:
   Parser(Lexer &Lex, llvm::BumpPtrAllocator &Alloc)
       : Lex(Lex), Alloc(Alloc), Cur(Lex.Next()) {}
 
+  /// The current, not-yet-consumed token. A driver picks the top-level
+  /// grammar rule the same way the parser picks rules internally — by
+  /// looking at this token — so it is exposed read-only, as in clang
+  /// (clang's Parser::getCurToken()).
+  const Token &getCurToken() const { return Cur; }
+
   /// expression ::= primary (binop primary)*
   llvm::Expected<Expr *> parseExpr();
 
+  /// definition ::= 'def' prototype expression
+  /// The current token must be 'def'.
+  llvm::Expected<FunctionDecl *> parseDefinition();
+
+  /// external ::= 'extern' prototype
+  /// The current token must be 'extern'. Returns a FunctionDecl with no
+  /// body (see Decl.h).
+  llvm::Expected<FunctionDecl *> parseExtern();
+
 private:
+  /// A parsed prototype, before it is known whether a body follows: the
+  /// pieces of a FunctionDecl minus the body.
+  struct Prototype {
+    llvm::StringRef Name;
+    llvm::ArrayRef<llvm::StringRef> Params;
+  };
+
+  /// prototype ::= identifier '(' identifier* ')'
+  llvm::Expected<Prototype> parsePrototype();
+
   /// Binary-operator precedence — an implementation detail of
   /// parseBinOpRHS, so the enumerators, their values, and the rationale
   /// live in Parser.cpp. Declared opaquely here only because the recursion

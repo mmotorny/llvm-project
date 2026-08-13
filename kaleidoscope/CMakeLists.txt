@@ -6,10 +6,14 @@
 # The directory layout mirrors LLVM's own (LLVM's build system enforces one
 # target per directory):
 #   include/kaleidoscope/  public headers
-#   lib/                   the compiler, as the KaleidoscopeCore library
+#   lib/                   the compiler phases, one library each
+#   tools/                 executables — the toy driver
 #   unittests/             googletest unit tests
+#   test/                  lit + FileCheck regression tests
 
 include_directories(include)
 
 add_subdirectory(lib)
+add_subdirectory(tools)
 add_subdirectory(unittests)
+add_subdirectory(test)

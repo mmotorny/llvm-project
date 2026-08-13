@@ -135,6 +135,78 @@ TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
             "expected ')' or ',' in argument list");
 }
 
+TEST(ParserTest, ParsesDefinition) {
+  Lexer Lex("def add(a b) a + b");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_TRUE(bool(D));
+  EXPECT_EQ(llvm::to_string(**D), "(def (add a b) (+ a b))");
+}
+
+TEST(ParserTest, ParsesDefinitionWithNoParameters) {
+  Lexer Lex("def one() 1");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_TRUE(bool(D));
+  EXPECT_EQ(llvm::to_string(**D), "(def (one) 1)");
+}
+
+TEST(ParserTest, ParsesExtern) {
+  Lexer Lex("extern cos(x)");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseExtern();
+  ASSERT_TRUE(bool(D));
+  EXPECT_FALSE((*D)->hasBody());
+  EXPECT_EQ(llvm::to_string(**D), "(extern (cos x))");
+}
+
+TEST(ParserTest, MissingFunctionNameIsAnError) {
+  Lexer Lex("def 1(x) x");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_FALSE(bool(D));
+  EXPECT_EQ(llvm::toString(D.takeError()),
+            "expected function name in prototype");
+}
+
+TEST(ParserTest, MissingParameterListIsAnError) {
+  Lexer Lex("def f x");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_FALSE(bool(D));
+  EXPECT_EQ(llvm::toString(D.takeError()), "expected '(' in prototype");
+}
+
+TEST(ParserTest, CommaSeparatedParametersAreAnError) {
+  Lexer Lex("def f(a, b) a");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_FALSE(bool(D));
+  EXPECT_EQ(llvm::toString(D.takeError()), "expected ')' in prototype");
+}
+
+TEST(ParserTest, MissingDefinitionBodyIsAnError) {
+  Lexer Lex("def f(x)");
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
+
+  auto D = P.parseDefinition();
+  ASSERT_FALSE(bool(D));
+  EXPECT_EQ(llvm::toString(D.takeError()), "expected an expression");
+}
+
 TEST(ParserTest, EmptyInputIsAnError) {
   Lexer Lex("");
   llvm::BumpPtrAllocator Alloc;
