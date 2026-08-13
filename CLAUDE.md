@@ -21,11 +21,7 @@ from zero in PRs and chat. Roadmap, build, and test commands:
 
 ## Conventions
 
-- Model everything on what clang/MLIR/LLVM do in this tree; the merged
-  code is the record of settled design — don't relitigate it silently.
+- Model everything on what clang/MLIR/LLVM do in this tree.
 - Grep for an existing LLVM helper before writing one; no speculative API;
   implementation details out of headers; tests DAMP; don't test print
   formats.
-- Rationale not visible in the code: `BinaryExpr`'s op is `char` and
-  `Prec` values are spaced out because step 8 adds user-defined operators
-  with numeric precedences.
