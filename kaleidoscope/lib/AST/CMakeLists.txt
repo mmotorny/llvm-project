@@ -2,5 +2,6 @@
 set(LLVM_LINK_COMPONENTS Support)
 
 add_llvm_library(kaleidoscopeAST BUILDTREE_ONLY
+  Decl.cpp
   Expr.cpp
 )

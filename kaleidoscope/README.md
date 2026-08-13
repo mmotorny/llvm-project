@@ -30,10 +30,11 @@ test directories:
 - `include/kaleidoscope/<Phase>/` — public headers (`Lex/Lexer.h`, ...)
 - `lib/<Phase>/` — the implementation (`Lex/` builds `kaleidoscopeLex`, ...)
 - `unittests/<Phase>/` — googletest unit tests (`Lex/LexerTest.cpp`, ...)
+- `tools/toy/` — the driver executable, named `toy` after the tutorial's
+- `test/` — lit + FileCheck regression tests (`.ks` sample programs)
 
-Each step adds its stage across those three directories, so each PR's diff
-is exactly what the step adds. The interactive driver, `toy.cpp`, arrives in
-step 2 once there is a parser to drive.
+Each step adds its stage across those directories, so each PR's diff is
+exactly what the step adds.
 
 We follow the tutorial's *structure* but not its style: where the tutorial
 uses globals and function-local statics for simplicity, we keep state in
@@ -72,19 +73,27 @@ library and LLVM's vendored googletest, which LLVM unit tests link against):
 
 ```
 ninja -C build KaleidoscopeTests
-build/tools/kaleidoscope/unittests/{Lex,AST,Parse}/Kaleidoscope*Tests
+build/tools/kaleidoscope/unittests/{Lex,AST}/Kaleidoscope*Tests
 ```
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**
-for C++ APIs (what we have now), and — once the compiler emits IR in step
-3+ — **lit + FileCheck** regression tests that run the compiler on sample
-programs and check its output.
+for C++ APIs (above), and **lit + FileCheck** regression tests that run the
+compiler on sample programs and check its output — printed ASTs for now,
+LLVM IR from step 4 on:
+
+```
+ninja -C build check-kaleidoscope
+```
+
+The driver itself is `build/bin/toy`: run it with a file (or `-` for a
+pipe) to compile a whole buffer, or with no arguments for an interactive
+prompt.
 
 ## Progress
 
 - [x] Step 1: Lexer — turn the raw character stream into tokens
 - [x] Step 2: AST and expression parser
-- [ ] Step 3: Parser for functions, the interactive driver loop, and
+- [x] Step 3: Parser for functions, the interactive driver loop, and
       lit + FileCheck end-to-end tests
 - [ ] Step 4: Code generation to LLVM IR
 - [ ] Step 5: Optimization passes and JIT compilation

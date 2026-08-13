@@ -5,6 +5,8 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Error.h"
 
+#include <cassert>
+
 using namespace kaleidoscope;
 
 // Binary-operator precedence: higher binds tighter, so '*' groups before
@@ -53,6 +55,53 @@ bool Parser::consumeIf(tok::TokenKind K) {
     return false;
   advance();
   return true;
+}
+
+llvm::Expected<Parser::Prototype> Parser::parsePrototype() {
+  if (Cur.isNot(tok::identifier))
+    return makeParseError("expected function name in prototype");
+  llvm::StringRef Name = Cur.getIdentifier();
+  advance();
+
+  if (!consumeIf(tok::l_paren))
+    return makeParseError("expected '(' in prototype");
+
+  // Parameters are bare identifiers separated only by whitespace — the
+  // tutorial's grammar has no commas here, though calls do: "def f(a b)"
+  // but "f(1, 2)".
+  llvm::SmallVector<llvm::StringRef, 8> Params;
+  while (Cur.is(tok::identifier)) {
+    Params.push_back(Cur.getIdentifier());
+    advance();
+  }
+  if (!consumeIf(tok::r_paren))
+    return makeParseError("expected ')' in prototype");
+
+  return Prototype{Name, llvm::ArrayRef(Params).copy(Alloc)};
+}
+
+llvm::Expected<FunctionDecl *> Parser::parseDefinition() {
+  assert(Cur.is(tok::kw_def) && "parseDefinition called without 'def'");
+  advance();
+
+  auto Proto = parsePrototype();
+  if (!Proto)
+    return Proto.takeError();
+
+  auto Body = parseExpr();
+  if (!Body)
+    return Body.takeError();
+  return new (Alloc) FunctionDecl(Proto->Name, Proto->Params, *Body);
+}
+
+llvm::Expected<FunctionDecl *> Parser::parseExtern() {
+  assert(Cur.is(tok::kw_extern) && "parseExtern called without 'extern'");
+  advance();
+
+  auto Proto = parsePrototype();
+  if (!Proto)
+    return Proto.takeError();
+  return new (Alloc) FunctionDecl(Proto->Name, Proto->Params, /*Body=*/nullptr);
 }
 
 llvm::Expected<Expr *> Parser::parseExpr() {
