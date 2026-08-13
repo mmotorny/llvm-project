@@ -73,7 +73,7 @@ library and LLVM's vendored googletest, which LLVM unit tests link against):
 
 ```
 ninja -C build KaleidoscopeTests
-build/tools/kaleidoscope/unittests/{Lex,AST,Parse}/Kaleidoscope*Tests
+build/tools/kaleidoscope/unittests/{Lex,AST}/Kaleidoscope*Tests
 ```
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**

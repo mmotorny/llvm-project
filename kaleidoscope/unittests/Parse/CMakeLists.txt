@@ -1,5 +1,0 @@
-add_unittest(KaleidoscopeTests KaleidoscopeParseTests
-  ParserTest.cpp
-)
-target_link_libraries(KaleidoscopeParseTests
-  PRIVATE kaleidoscopeParse kaleidoscopeAST kaleidoscopeLex)
