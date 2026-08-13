@@ -24,17 +24,18 @@
 #include "kaleidoscope/AST/Expr.h"
 #include "kaleidoscope/Lex/Lexer.h"
 
+#include "llvm/Support/Allocator.h"
 #include "llvm/Support/Error.h"
 
 namespace kaleidoscope {
 
-class ASTContext;
-
 class Parser {
 public:
-  /// Parsed nodes are allocated in (and owned by) Ctx.
+  /// Parsed nodes are allocated in Alloc, which owns the returned tree:
+  /// nodes are never deleted individually (see Expr.h).
   /// Note: reads the first token from Lex immediately (see Cur below).
-  Parser(Lexer &Lex, ASTContext &Ctx) : Lex(Lex), Ctx(Ctx), Cur(Lex.Next()) {}
+  Parser(Lexer &Lex, llvm::BumpPtrAllocator &Alloc)
+      : Lex(Lex), Alloc(Alloc), Cur(Lex.Next()) {}
 
   /// expression ::= primary (binop primary)*
   llvm::Expected<Expr *> parseExpr();
@@ -67,7 +68,7 @@ private:
   bool consumeIf(tok::TokenKind K);
 
   Lexer &Lex;
-  ASTContext &Ctx;
+  llvm::BumpPtrAllocator &Alloc;
   // One token of lookahead: the parser picks the grammar rule to apply by
   // inspecting the current token without consuming it.
   Token Cur;

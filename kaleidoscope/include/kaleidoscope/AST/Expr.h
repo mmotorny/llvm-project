@@ -15,11 +15,13 @@
 //
 // The hierarchy is modeled the way clang models its AST:
 //
-//  - No virtual functions anywhere — not even a destructor. Nodes live in
-//    an ASTContext arena and are never deleted individually, so no vtable
-//    is needed. Type identification is LLVM-style RTTI (a Kind tag plus
-//    classof), which makes llvm::isa<>/cast<>/dyn_cast<> work — see
-//    https://llvm.org/docs/HowToSetUpLLVMStyleRTTI.html
+//  - No virtual functions anywhere — not even a destructor. Nodes are
+//    allocated in a caller-owned llvm::BumpPtrAllocator arena — `new
+//    (Alloc) NumberExpr(...)` — and never deleted individually (their
+//    destructors never run, so nodes must stay trivially destructible), so
+//    no vtable is needed. Type identification is LLVM-style RTTI (a Kind
+//    tag plus classof), which makes llvm::isa<>/cast<>/dyn_cast<> work —
+//    see https://llvm.org/docs/HowToSetUpLLVMStyleRTTI.html
 //  - Operations over the tree (printing here; code generation later) are
 //    one switch over the Kind tag, not virtual methods: a closed hierarchy
 //    with open operations, so adding an operation touches no node class,
@@ -62,7 +64,7 @@ public:
 protected:
   explicit Expr(Kind K) : K(K) {}
   // Non-virtual, and protected so nothing can `delete` a node through the
-  // base class: nodes are arena-owned by the ASTContext.
+  // base class: nodes are owned by the arena they were allocated in.
   ~Expr() = default;
 
 private:

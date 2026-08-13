@@ -2,7 +2,6 @@
 
 #include "kaleidoscope/Parse/Parser.h"
 
-#include "kaleidoscope/AST/ASTContext.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Error.h"
 
@@ -67,7 +66,7 @@ llvm::Expected<Expr *> Parser::parsePrimary() {
   if (Cur.is(tok::number)) {
     double Value = Cur.getNumber();
     advance();
-    return new (Ctx) NumberExpr(Value);
+    return new (Alloc) NumberExpr(Value);
   }
 
   if (Cur.is(tok::identifier)) {
@@ -79,7 +78,7 @@ llvm::Expected<Expr *> Parser::parsePrimary() {
     // A bare identifier is a variable reference; one followed by '(' is a
     // call.
     if (!consumeIf(tok::l_paren))
-      return new (Ctx) VariableExpr(Name);
+      return new (Alloc) VariableExpr(Name);
 
     llvm::SmallVector<Expr *, 8> Args;
     if (!consumeIf(tok::r_paren)) {
@@ -95,7 +94,7 @@ llvm::Expected<Expr *> Parser::parsePrimary() {
           return makeParseError("expected ')' or ',' in argument list");
       }
     }
-    return new (Ctx) CallExpr(Name, Ctx.copyArray(llvm::ArrayRef(Args)));
+    return new (Alloc) CallExpr(Name, llvm::ArrayRef(Args).copy(Alloc));
   }
 
   if (consumeIf(tok::l_paren)) {
@@ -141,6 +140,6 @@ llvm::Expected<Expr *> Parser::parseBinOpRHS(Prec MinPrec, Expr *LHS) {
         return RHS.takeError();
     }
 
-    LHS = new (Ctx) BinaryExpr(Op, LHS, *RHS);
+    LHS = new (Alloc) BinaryExpr(Op, LHS, *RHS);
   }
 }

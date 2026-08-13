@@ -2,11 +2,11 @@
 
 #include "kaleidoscope/Parse/Parser.h"
 
-#include "kaleidoscope/AST/ASTContext.h"
 #include "kaleidoscope/AST/Expr.h"
 #include "kaleidoscope/Lex/Lexer.h"
+#include "llvm/Support/Allocator.h"
 #include "llvm/Support/Error.h"
-#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/ScopedPrinter.h"
 
 #include "gtest/gtest.h"
 
@@ -14,110 +14,100 @@ using namespace kaleidoscope;
 
 namespace {
 
-// Render an expression through its raw_ostream printer: "(+ x (* y 2))"
-// spells out the tree shape, so string comparison checks the parse
-// structure, not just that parsing succeeded.
-std::string toString(const Expr &E) {
-  std::string S;
-  llvm::raw_string_ostream OS(S);
-  OS << E;
-  return S;
-}
-
 TEST(ParserTest, ParsesNumber) {
   Lexer Lex("42");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "42");
+  EXPECT_EQ(llvm::to_string(**E), "42");
 }
 
 TEST(ParserTest, ParsesVariable) {
   Lexer Lex("x");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "x");
+  EXPECT_EQ(llvm::to_string(**E), "x");
 }
 
 TEST(ParserTest, MultiplicationBindsTighterThanAddition) {
   Lexer Lex("x + y * 2");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(+ x (* y 2))");
+  EXPECT_EQ(llvm::to_string(**E), "(+ x (* y 2))");
 }
 
 TEST(ParserTest, EqualPrecedenceGroupsLeftToRight) {
   Lexer Lex("a - b + c");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(+ (- a b) c)");
+  EXPECT_EQ(llvm::to_string(**E), "(+ (- a b) c)");
 }
 
 TEST(ParserTest, ComparisonBindsLoosest) {
   Lexer Lex("a + b < c * d");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(< (+ a b) (* c d))");
+  EXPECT_EQ(llvm::to_string(**E), "(< (+ a b) (* c d))");
 }
 
 TEST(ParserTest, ParenthesesOverridePrecedence) {
   Lexer Lex("(x + y) * 2");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(* (+ x y) 2)");
+  EXPECT_EQ(llvm::to_string(**E), "(* (+ x y) 2)");
 }
 
 TEST(ParserTest, ParsesCallWithExpressionArguments) {
   Lexer Lex("fib(x - 1)");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(fib (- x 1))");
+  EXPECT_EQ(llvm::to_string(**E), "(fib (- x 1))");
 }
 
 TEST(ParserTest, ParsesCallWithNoArguments) {
   Lexer Lex("f()");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(f)");
+  EXPECT_EQ(llvm::to_string(**E), "(f)");
 }
 
 TEST(ParserTest, ParsesCallWithMultipleArguments) {
   Lexer Lex("f(a, b + 1, g(c))");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_TRUE(bool(E));
-  EXPECT_EQ(toString(**E), "(f a (+ b 1) (g c))");
+  EXPECT_EQ(llvm::to_string(**E), "(f a (+ b 1) (g c))");
 }
 
 TEST(ParserTest, MissingRightOperandIsAnError) {
   Lexer Lex("x +");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -126,8 +116,8 @@ TEST(ParserTest, MissingRightOperandIsAnError) {
 
 TEST(ParserTest, UnclosedParenthesisIsAnError) {
   Lexer Lex("(x + y");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -136,8 +126,8 @@ TEST(ParserTest, UnclosedParenthesisIsAnError) {
 
 TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
   Lexer Lex("f(a b)");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
@@ -147,8 +137,8 @@ TEST(ParserTest, MissingArgumentSeparatorIsAnError) {
 
 TEST(ParserTest, EmptyInputIsAnError) {
   Lexer Lex("");
-  ASTContext Ctx;
-  Parser P(Lex, Ctx);
+  llvm::BumpPtrAllocator Alloc;
+  Parser P(Lex, Alloc);
 
   auto E = P.parseExpr();
   ASSERT_FALSE(bool(E));
