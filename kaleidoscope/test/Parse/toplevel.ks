@@ -14,6 +14,9 @@ extern cos(x)
 def add(a b) a + b
 # CHECK-NEXT: (def (add a b) (+ a b))
 
+def one() 1
+# CHECK-NEXT: (def (one) 1)
+
 # A bare expression is a top-level entity too.
 cos(1) < add(2, 3) * 4
 # CHECK-NEXT: (< (cos 1) (* (add 2 3) 4))
