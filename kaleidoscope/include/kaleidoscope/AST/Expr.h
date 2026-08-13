@@ -47,6 +47,15 @@ public:
 
   Kind getKind() const { return K; }
 
+  /// Print this expression to OS as a prefix S-expression — "x + y * 2"
+  /// prints as "(+ x (* y 2))" — which spells out the tree shape
+  /// unambiguously. Not a stable format: for tests and debugging only.
+  void print(llvm::raw_ostream &OS) const;
+
+  /// Debugger convenience, in LLVM's tradition: print to llvm::errs() with
+  /// a trailing newline. Call it from a debugger prompt.
+  void dump() const;
+
 protected:
   explicit Expr(Kind K) : K(K) {}
 
@@ -114,10 +123,12 @@ private:
   std::vector<std::unique_ptr<Expr>> Args;
 };
 
-/// Print an expression as a prefix S-expression — "x + y * 2" prints as
-/// "(+ x (* y 2))" — which spells out the tree shape unambiguously. Used by
-/// tests and for debugging.
-llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const Expr &E);
+/// Sugar over Expr::print, LLVM-style (cf. operator<< for llvm::Value), so
+/// expressions compose in raw_ostream chains.
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const Expr &E) {
+  E.print(OS);
+  return OS;
+}
 
 } // namespace kaleidoscope
 
