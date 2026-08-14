@@ -168,8 +168,9 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  // LineEditor derives the "kaleidoscope> " prompt from the program name,
+  // as clang-query's does.
   llvm::LineEditor LE("kaleidoscope");
-  LE.setPrompt("ready> ");
   while (std::optional<std::string> Line = LE.readLine()) {
     handleBuffer(*Line, M, /*PrintEachEntity=*/true);
     llvm::outs().flush();
