@@ -79,16 +79,17 @@ build/tools/kaleidoscope/unittests/{Lex,AST}/Kaleidoscope*Tests
 
 Testing follows LLVM's own two-tier convention: **googletest unit tests**
 for C++ APIs (above), and **lit + FileCheck** regression tests that run the
-compiler on sample programs and check its output — printed ASTs for now,
-LLVM IR from step 4 on:
+compiler on sample programs and check its output — the LLVM IR it emits
+(`test/CodeGen/`), or under `-ast-dump` the parsed ASTs (`test/Parse/`):
 
 ```
 ninja -C build check-kaleidoscope
 ```
 
 The driver itself is `build/bin/kaleidoscope`: run it with a file (or `-`
-for a pipe) to compile a whole buffer, or with no arguments for an
-interactive prompt. (The tutorial calls its binary `toy`; ours takes the
+for a pipe) to compile a whole buffer to LLVM IR, or with no arguments
+for an interactive prompt; `-ast-dump` prints the parsed ASTs instead of
+generating code. (The tutorial calls its binary `toy`; ours takes the
 project's name, as clang and flang do.)
 
 ## Progress
@@ -97,7 +98,7 @@ project's name, as clang and flang do.)
 - [x] Step 2: AST and expression parser
 - [x] Step 3: Parser for functions, the interactive driver loop, and
       lit + FileCheck end-to-end tests
-- [ ] Step 4: Code generation to LLVM IR
+- [x] Step 4: Code generation to LLVM IR
 - [ ] Step 5: Optimization passes and JIT compilation
 - [ ] Step 6: Control flow — if/then/else
 - [ ] Step 7: Control flow — for loops

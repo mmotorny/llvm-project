@@ -1,4 +1,4 @@
-# RUN: kaleidoscope %s | FileCheck %s
+# RUN: kaleidoscope -ast-dump %s | FileCheck %s
 
 # The expression grammar, exercised as bare top-level entities. Newlines
 # are just whitespace to the lexer, so what makes each line a separate
